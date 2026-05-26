@@ -898,7 +898,7 @@ export default function FretboardPrinter() {
   const [logoText,        setLogoText]         = useState("unlocktheguitar.net");
   const [showPrint,       setShowPrint]        = useState(false);
   const [activeTab,       setActiveTab]        = useState(0);
-  const [isDark,          setIsDark]           = useState(true);
+  const [isDark,          setIsDark]           = useState(false);
   // Presets
   const [savedPresets,    setSavedPresets]     = useState([]);
   const [savePresetName,  setSavePresetName]   = useState("");
