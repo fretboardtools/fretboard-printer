@@ -986,19 +986,34 @@ export default function FretboardPrinter() {
         ::-webkit-scrollbar-thumb { background:${T.scrollTh}; border-radius:3px; }
         select option { background:${T.selOptBg}; color:${T.textHi}; }
         @keyframes fadeIn { from{opacity:0;transform:translateY(5px)} to{opacity:1;transform:translateY(0)} }
+
+        /* ── Mobile ── */
+        @media (max-width: 600px) {
+          .topbar-badge { display:none !important; }
+          .topbar-title { font-size:17px !important; }
+          .topbar-print span:last-child { display:none !important; }
+          .topbar-print { padding:7px 10px !important; }
+          .tab-label { font-size:10px !important; padding:8px 10px !important; }
+          .diagram-area { padding:12px 10px 10px !important; }
+          .controls-area { padding:14px 14px !important; }
+          .layer-grid { grid-template-columns:1fr !important; }
+        }
+        @media (max-width: 400px) {
+          .tab-label { font-size:9px !important; padding:7px 7px !important; }
+        }
       `}</style>
 
       {/* ── Top bar ── */}
       <div style={{
         background:T.surface, borderBottom:`1px solid ${T.border}`,
-        padding:"0 20px", display:"flex", alignItems:"center",
-        gap:"12px", height:"52px", flexShrink:0,
+        padding:"0 16px", display:"flex", alignItems:"center",
+        gap:"10px", minHeight:"52px", flexShrink:0, flexWrap:"wrap",
       }}>
-        <span style={{
+        <span className="topbar-title" style={{
           fontFamily:"'Playfair Display',serif", fontStyle:"italic",
           fontSize:"20px", color:T.accent, letterSpacing:"-0.3px", whiteSpace:"nowrap",
         }}>Fretboard Printer</span>
-        <span style={{
+        <span className="topbar-badge" style={{
           fontFamily:"'JetBrains Mono',monospace", fontSize:"9px",
           color:"#F59E0B", background:T.badge,
           padding:"2px 6px", borderRadius:"4px", letterSpacing:"1px",
@@ -1014,15 +1029,15 @@ export default function FretboardPrinter() {
           <span style={{ fontSize:"14px" }}>{isDark?"☀️":"🌙"}</span>
           <span style={{ fontSize:"10px", fontFamily:"'JetBrains Mono',monospace" }}>{isDark?"Light":"Dark"}</span>
         </button>
-        <button onClick={()=>setShowPrint(true)} style={{
+        <button className="topbar-print" onClick={()=>setShowPrint(true)} style={{
           padding:"7px 18px", borderRadius:"8px", fontSize:"13px", fontWeight:"700",
           border:"1.5px solid #22C55E", background:"#052e16",
           color:"#4ade80", cursor:"pointer", display:"flex", alignItems:"center", gap:"6px", whiteSpace:"nowrap",
-        }}>🖨 Print / Export</button>
+        }}>🖨 <span>Print / Export</span></button>
       </div>
 
       {/* ── Diagram area ── */}
-      <div style={{
+      <div className="diagram-area" style={{
         background:T.fbBg,
         borderBottom:`1px solid ${T.border}`,
         padding:"24px 24px 16px",
@@ -1086,21 +1101,22 @@ export default function FretboardPrinter() {
         {/* Tab bar */}
         <div style={{
           background:T.surface, borderBottom:`1px solid ${T.border}`,
-          display:"flex", gap:0, padding:"0 16px", flexShrink:0,
+          display:"flex", gap:0, padding:"0 8px", flexShrink:0,
+          overflowX:"auto",
         }}>
           {CTRL_TABS.map((tab, i) => (
-            <button key={tab} onClick={()=>setActiveTab(i)} style={{
-              padding:"10px 18px", background:"none", border:"none",
+            <button key={tab} className="tab-label" onClick={()=>setActiveTab(i)} style={{
+              padding:"10px 14px", background:"none", border:"none",
               borderBottom: activeTab===i ? "2px solid #F59E0B" : "2px solid transparent",
               color: activeTab===i ? "#F59E0B" : T.textLo,
               fontSize:"12px", fontWeight: activeTab===i?"700":"500",
-              cursor:"pointer", transition:"all 0.1s", whiteSpace:"nowrap",
+              cursor:"pointer", transition:"all 0.1s", whiteSpace:"nowrap", flexShrink:0,
             }}>{tab}</button>
           ))}
         </div>
 
         {/* Tab content */}
-        <div style={{ flex:1, overflowY:"auto", padding:"20px 24px", background:T.bg }}>
+        <div className="controls-area" style={{ flex:1, overflowY:"auto", padding:"20px 24px", background:T.bg }}>
 
           {/* ── Tab 0: Guitar & Tuning ── */}
           {activeTab===0 && (
@@ -1196,7 +1212,7 @@ export default function FretboardPrinter() {
                 <span style={{ fontSize:"13px",fontWeight:"600",color:T.textHi }}>{layers.length} layer{layers.length!==1?"s":""}</span>
                 <button onClick={addLayer} style={{ padding:"7px 16px",borderRadius:"8px",fontSize:"12px",fontWeight:"700",border:"1.5px solid #22C55E",background:"#052e16",color:"#4ade80",cursor:"pointer" }}>+ Add layer</button>
               </div>
-              <div style={{ display:"grid", gridTemplateColumns:"repeat(auto-fill,minmax(300px,1fr))", gap:"8px" }}>
+              <div className="layer-grid" style={{ display:"grid", gridTemplateColumns:"repeat(auto-fill,minmax(300px,1fr))", gap:"8px" }}>
                 {layers.map(layer=>(
                   <LayerEditor key={layer.id} layer={layer} T={T}
                     onChange={updated=>updateLayer(layer.id,updated)}
