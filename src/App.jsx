@@ -598,6 +598,129 @@ const THEMES = {
   },
 };
 
+// ─── Custom Dot Editor ───────────────────────────────────────────────────────
+
+function CustomDotEditor({ layer, onChange, T, ic }) {
+  const [pendingLabel, setPendingLabel] = useState("");
+  const STRINGS = 6;
+  const FRETS = 13; // 0–12
+
+  const toggleDot = (string, fret) => {
+    const existing = (layer.customDots || []);
+    const idx = existing.findIndex(d => d.string === string && d.fret === fret);
+    let updated;
+    if (idx >= 0) {
+      // Remove dot
+      updated = existing.filter((_, i) => i !== idx);
+    } else {
+      // Add dot
+      updated = [...existing, {
+        string,
+        fret,
+        note: addSemi(["E","A","D","G","B","E"][string], fret),
+        label: pendingLabel,
+        color: layer.color,
+        shape: layer.shape || "circle",
+        size: layer.size || "medium",
+        isRoot: false,
+        layerId: layer.id,
+      }];
+    }
+    onChange({ ...layer, customDots: updated });
+  };
+
+  const clearAll = () => onChange({ ...layer, customDots: [] });
+
+  const dotCount = (layer.customDots || []).length;
+  const displayStrings = [5,4,3,2,1,0]; // high E at top
+
+  return (
+    <div>
+      {/* Label input */}
+      <TRow label="DOT LABEL (optional — set before clicking)" T={T}>
+        <div style={{ display:"flex", gap:"6px" }}>
+          <input
+            value={pendingLabel}
+            onChange={e => setPendingLabel(e.target.value)}
+            placeholder="e.g. R, 3, b7, or blank"
+            maxLength={4}
+            style={{
+              flex:1, background:T.inputBg, border:`1px solid ${T.border}`,
+              borderRadius:"6px", color:T.textHi, padding:"5px 8px",
+              fontSize:"12px", outline:"none",
+              fontFamily:"'JetBrains Mono',monospace",
+            }}
+          />
+          {dotCount > 0 && (
+            <button onClick={clearAll} style={{
+              padding:"5px 10px", borderRadius:"6px", fontSize:"11px",
+              border:"1px solid #ef4444", background:"transparent",
+              color:"#ef4444", cursor:"pointer",
+            }}>Clear all</button>
+          )}
+        </div>
+      </TRow>
+
+      {/* Mini fretboard grid */}
+      <TRow label={`CLICK TO PLACE DOTS — ${dotCount} placed`} T={T}>
+        <div style={{ overflowX:"auto" }}>
+          <div style={{ minWidth:"320px" }}>
+            {/* Fret numbers */}
+            <div style={{ display:"flex", marginLeft:"20px", marginBottom:"3px" }}>
+              {Array.from({length:FRETS},(_,f)=>(
+                <div key={f} style={{
+                  width:"22px", textAlign:"center", fontSize:"8px", flexShrink:0,
+                  color: [3,5,7,9,12].includes(f) ? ic : T.fretNum,
+                  fontFamily:"'JetBrains Mono',monospace",
+                }}>{f===0?"O":f}</div>
+              ))}
+            </div>
+            {/* Strings */}
+            {displayStrings.map(si => {
+              const openNote = ["E","A","D","G","B","E"][si];
+              return (
+                <div key={si} style={{ display:"flex", alignItems:"center", marginBottom:"2px" }}>
+                  <div style={{ width:"18px", fontSize:"8px", color:T.fretHi, fontFamily:"'JetBrains Mono',monospace", textAlign:"right", paddingRight:"3px", flexShrink:0 }}>
+                    {openNote}
+                  </div>
+                  {Array.from({length:FRETS},(_,fret)=>{
+                    const hasDot = (layer.customDots||[]).some(d=>d.string===si&&d.fret===fret);
+                    return (
+                      <div
+                        key={fret}
+                        onClick={() => toggleDot(si, fret)}
+                        style={{
+                          width:"22px", height:"18px", flexShrink:0,
+                          border: `1px solid ${T.border}`,
+                          borderRadius:"3px",
+                          background: hasDot ? ic : T.surface2,
+                          cursor:"pointer",
+                          display:"flex", alignItems:"center", justifyContent:"center",
+                          transition:"all 0.1s",
+                          margin:"0 1px",
+                        }}
+                      >
+                        {hasDot && (
+                          <span style={{ fontSize:"7px", color:"#fff", fontWeight:"700", fontFamily:"'JetBrains Mono',monospace" }}>
+                            {(layer.customDots||[]).find(d=>d.string===si&&d.fret===fret)?.label || ""}
+                          </span>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+              );
+            })}
+          </div>
+        </div>
+        <div style={{ fontSize:"10px", color:T.textMute, marginTop:"6px" }}>
+          Set a label above, then click any cell to place a dot. Click again to remove.
+        </div>
+      </TRow>
+    </div>
+  );
+}
+
 // ─── Layer Editor ─────────────────────────────────────────────────────────────
 
 function LayerEditor({ layer, onChange, onRemove, isOnly, T }) {
@@ -681,6 +804,10 @@ function LayerEditor({ layer, onChange, onRemove, isOnly, T }) {
               </select>
             </TRow>
           </>}
+
+          {layer.type === "Custom" && (
+            <CustomDotEditor layer={layer} onChange={onChange} T={T} ic={ic}/>
+          )}
 
           <TRow label="LABELS" T={T}>
             <div style={{ display:"flex", gap:"4px", flexWrap:"wrap" }}>
