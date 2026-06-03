@@ -255,11 +255,7 @@ function FretboardSVG({
       {/* Background */}
       <rect width={svgW} height={svgH} fill={bwMode ? "#fff" : isDark ? "#1a1f2e" : "#f8f9fc"}/>
 
-      {/* Nut */}
-      {fretStart === 0 && (
-        <rect x={MARGIN_L-2} y={MARGIN_T} width={5}
-          height={(strings-1)*STRING_H} fill={bwMode?"#000":isDark?"#8899aa":"#5a6880"}/>
-      )}
+      {/* Nut — always shown since fretboard starts at fret 1 */}
       {fretStart === 1 && (
         <rect x={MARGIN_L-2} y={MARGIN_T} width={4}
           height={(strings-1)*STRING_H} fill={bwMode?"#000":isDark?"#8899aa":"#5a6880"}/>
@@ -319,7 +315,7 @@ function FretboardSVG({
             fontFamily="'JetBrains Mono',monospace"
             fill={bwMode?"#000":isDark?"#5a7090":"#8899aa"}
             fontWeight={[3,5,7,9,12].includes(fret)?"700":"400"}>
-            {fret === 0 ? "O" : fret}
+            {fret === 0 ? "Open" : fret}
           </text>
         );
       })}
@@ -501,7 +497,7 @@ function PrintPageSVG({
           textAnchor="middle" fontSize={10}
           fontFamily="'JetBrains Mono',monospace"
           fill="#888" fontWeight={[3,5,7,9,12].includes(fret)?"700":"400"}>
-          {fret===0?"O":fret}
+          {fret===0?"Open":fret}
         </text>;
       })}
 
@@ -673,7 +669,7 @@ function CustomDotEditor({ layer, onChange, T, ic }) {
                   color: [3,5,7,9,12].includes(f) ? ic : T.fretNum,
                   fontFamily:"'JetBrains Mono',monospace",
                   margin:"0 1px",
-                }}>{f===0?"O":f}</div>
+                }}>{f===0?"Op":f}</div>
               ))}
             </div>
             {/* Strings */}
@@ -974,20 +970,20 @@ function PrintModalInner({ settings, tuning, fretStart, fretEnd, dots, onClose, 
 // ─── Built-in presets ─────────────────────────────────────────────────────────
 
 const BUILT_IN_PRESETS = [
-  { name:"A Minor Pentatonic — Full Neck",   guitarType:"6-string", tuningPreset:"Standard (EADGBe)", fretStart:0, fretEnd:12, title:"A Minor Pentatonic", subtitle:"Full neck overview", layers:[{ type:"Scale", root:"A", name:"Minor Pentatonic", labelMode:"interval", shape:"circle", size:"medium", color:"#E85D3A" }] },
-  { name:"A Blues Scale — Full Neck",        guitarType:"6-string", tuningPreset:"Standard (EADGBe)", fretStart:0, fretEnd:12, title:"A Blues Scale",       subtitle:"", layers:[{ type:"Scale", root:"A", name:"Blues", labelMode:"interval", shape:"circle", size:"medium", color:"#3A8FE8" }] },
-  { name:"A Minor Penta — Open Box (0–4)",   guitarType:"6-string", tuningPreset:"Standard (EADGBe)", fretStart:0, fretEnd:4,  title:"A Minor Pentatonic — Position 1", subtitle:"Open position box", layers:[{ type:"Scale", root:"A", name:"Minor Pentatonic", labelMode:"interval", shape:"circle", size:"medium", color:"#E85D3A" }] },
+  { name:"A Minor Pentatonic — Full Neck",   guitarType:"6-string", tuningPreset:"Standard (EADGBe)", fretStart:1, fretEnd:12, title:"A Minor Pentatonic", subtitle:"Full neck overview", layers:[{ type:"Scale", root:"A", name:"Minor Pentatonic", labelMode:"interval", shape:"circle", size:"medium", color:"#E85D3A" }] },
+  { name:"A Blues Scale — Full Neck",        guitarType:"6-string", tuningPreset:"Standard (EADGBe)", fretStart:1, fretEnd:12, title:"A Blues Scale",       subtitle:"", layers:[{ type:"Scale", root:"A", name:"Blues", labelMode:"interval", shape:"circle", size:"medium", color:"#3A8FE8" }] },
+  { name:"A Minor Penta — Open Box (0–4)",   guitarType:"6-string", tuningPreset:"Standard (EADGBe)", fretStart:1, fretEnd:4,  title:"A Minor Pentatonic — Position 1", subtitle:"Open position box", layers:[{ type:"Scale", root:"A", name:"Minor Pentatonic", labelMode:"interval", shape:"circle", size:"medium", color:"#E85D3A" }] },
   { name:"A Minor Penta — Box 2 (5–9)",      guitarType:"6-string", tuningPreset:"Standard (EADGBe)", fretStart:5, fretEnd:9,  title:"A Minor Pentatonic — Position 2", subtitle:"5th position box", layers:[{ type:"Scale", root:"A", name:"Minor Pentatonic", labelMode:"interval", shape:"circle", size:"medium", color:"#E85D3A" }] },
   { name:"A Minor Penta — Box 3 (7–11)",     guitarType:"6-string", tuningPreset:"Standard (EADGBe)", fretStart:7, fretEnd:11, title:"A Minor Pentatonic — Position 3", subtitle:"7th position box", layers:[{ type:"Scale", root:"A", name:"Minor Pentatonic", labelMode:"interval", shape:"circle", size:"medium", color:"#E85D3A" }] },
-  { name:"A Natural Minor — Full Neck",      guitarType:"6-string", tuningPreset:"Standard (EADGBe)", fretStart:0, fretEnd:12, title:"A Natural Minor",    subtitle:"Aeolian mode", layers:[{ type:"Scale", root:"A", name:"Natural Minor", labelMode:"note", shape:"circle", size:"medium", color:"#9B59B6" }] },
-  { name:"A Major Scale — Full Neck",        guitarType:"6-string", tuningPreset:"Standard (EADGBe)", fretStart:0, fretEnd:12, title:"A Major Scale",      subtitle:"", layers:[{ type:"Scale", root:"A", name:"Major", labelMode:"note", shape:"circle", size:"medium", color:"#2ECC71" }] },
-  { name:"A Dorian — Full Neck",             guitarType:"6-string", tuningPreset:"Standard (EADGBe)", fretStart:0, fretEnd:12, title:"A Dorian",           subtitle:"Mode II — minor with natural 6th", layers:[{ type:"Scale", root:"A", name:"Dorian", labelMode:"interval", shape:"circle", size:"medium", color:"#1ABC9C" }] },
-  { name:"A Mixolydian — Full Neck",         guitarType:"6-string", tuningPreset:"Standard (EADGBe)", fretStart:0, fretEnd:12, title:"A Mixolydian",       subtitle:"Mode V — major with b7", layers:[{ type:"Scale", root:"A", name:"Mixolydian", labelMode:"interval", shape:"circle", size:"medium", color:"#F0A500" }] },
-  { name:"Am7 Arpeggio — Full Neck",         guitarType:"6-string", tuningPreset:"Standard (EADGBe)", fretStart:0, fretEnd:12, title:"Am7 Arpeggio",       subtitle:"R · b3 · 5 · b7", layers:[{ type:"Arpeggio", root:"A", name:"Min7", labelMode:"interval", shape:"diamond", size:"medium", color:"#6366F1" }] },
-  { name:"A7 Arpeggio — Full Neck",          guitarType:"6-string", tuningPreset:"Standard (EADGBe)", fretStart:0, fretEnd:12, title:"A7 Arpeggio",        subtitle:"R · 3 · 5 · b7", layers:[{ type:"Arpeggio", root:"A", name:"Dom7", labelMode:"interval", shape:"diamond", size:"medium", color:"#EF4444" }] },
-  { name:"Penta + Blues Note overlay",       guitarType:"6-string", tuningPreset:"Standard (EADGBe)", fretStart:0, fretEnd:12, title:"Pentatonic + Blue Note", subtitle:"Pentatonic shell with added b5", layers:[{ type:"Scale", root:"A", name:"Minor Pentatonic", labelMode:"interval", shape:"circle", size:"medium", color:"#E85D3A" },{ type:"Scale", root:"A", name:"Blues", labelMode:"interval", shape:"circle", size:"small", color:"#2ECC71" }] },
-  { name:"Am Chord — Full Neck",             guitarType:"6-string", tuningPreset:"Standard (EADGBe)", fretStart:0, fretEnd:12, title:"Am Chord Tones",     subtitle:"R · b3 · 5 — all positions", layers:[{ type:"Chord", root:"A", name:"Minor (triad)", labelMode:"interval", shape:"square", size:"medium", color:"#6366F1" }] },
-  { name:"A Dom7 Chord — Full Neck",         guitarType:"6-string", tuningPreset:"Standard (EADGBe)", fretStart:0, fretEnd:12, title:"A7 Chord Tones",     subtitle:"R · 3 · 5 · b7 — all positions", layers:[{ type:"Chord", root:"A", name:"Dominant 7", labelMode:"interval", shape:"square", size:"medium", color:"#EF4444" }] },
+  { name:"A Natural Minor — Full Neck",      guitarType:"6-string", tuningPreset:"Standard (EADGBe)", fretStart:1, fretEnd:12, title:"A Natural Minor",    subtitle:"Aeolian mode", layers:[{ type:"Scale", root:"A", name:"Natural Minor", labelMode:"note", shape:"circle", size:"medium", color:"#9B59B6" }] },
+  { name:"A Major Scale — Full Neck",        guitarType:"6-string", tuningPreset:"Standard (EADGBe)", fretStart:1, fretEnd:12, title:"A Major Scale",      subtitle:"", layers:[{ type:"Scale", root:"A", name:"Major", labelMode:"note", shape:"circle", size:"medium", color:"#2ECC71" }] },
+  { name:"A Dorian — Full Neck",             guitarType:"6-string", tuningPreset:"Standard (EADGBe)", fretStart:1, fretEnd:12, title:"A Dorian",           subtitle:"Mode II — minor with natural 6th", layers:[{ type:"Scale", root:"A", name:"Dorian", labelMode:"interval", shape:"circle", size:"medium", color:"#1ABC9C" }] },
+  { name:"A Mixolydian — Full Neck",         guitarType:"6-string", tuningPreset:"Standard (EADGBe)", fretStart:1, fretEnd:12, title:"A Mixolydian",       subtitle:"Mode V — major with b7", layers:[{ type:"Scale", root:"A", name:"Mixolydian", labelMode:"interval", shape:"circle", size:"medium", color:"#F0A500" }] },
+  { name:"Am7 Arpeggio — Full Neck",         guitarType:"6-string", tuningPreset:"Standard (EADGBe)", fretStart:1, fretEnd:12, title:"Am7 Arpeggio",       subtitle:"R · b3 · 5 · b7", layers:[{ type:"Arpeggio", root:"A", name:"Min7", labelMode:"interval", shape:"diamond", size:"medium", color:"#6366F1" }] },
+  { name:"A7 Arpeggio — Full Neck",          guitarType:"6-string", tuningPreset:"Standard (EADGBe)", fretStart:1, fretEnd:12, title:"A7 Arpeggio",        subtitle:"R · 3 · 5 · b7", layers:[{ type:"Arpeggio", root:"A", name:"Dom7", labelMode:"interval", shape:"diamond", size:"medium", color:"#EF4444" }] },
+  { name:"Penta + Blues Note overlay",       guitarType:"6-string", tuningPreset:"Standard (EADGBe)", fretStart:1, fretEnd:12, title:"Pentatonic + Blue Note", subtitle:"Pentatonic shell with added b5", layers:[{ type:"Scale", root:"A", name:"Minor Pentatonic", labelMode:"interval", shape:"circle", size:"medium", color:"#E85D3A" },{ type:"Scale", root:"A", name:"Blues", labelMode:"interval", shape:"circle", size:"small", color:"#2ECC71" }] },
+  { name:"Am Chord — Full Neck",             guitarType:"6-string", tuningPreset:"Standard (EADGBe)", fretStart:1, fretEnd:12, title:"Am Chord Tones",     subtitle:"R · b3 · 5 — all positions", layers:[{ type:"Chord", root:"A", name:"Minor (triad)", labelMode:"interval", shape:"square", size:"medium", color:"#6366F1" }] },
+  { name:"A Dom7 Chord — Full Neck",         guitarType:"6-string", tuningPreset:"Standard (EADGBe)", fretStart:1, fretEnd:12, title:"A7 Chord Tones",     subtitle:"R · 3 · 5 · b7 — all positions", layers:[{ type:"Chord", root:"A", name:"Dominant 7", labelMode:"interval", shape:"square", size:"medium", color:"#EF4444" }] },
 ];
 
 let layerIdCounter = 1;
@@ -1021,7 +1017,7 @@ export default function FretboardPrinter() {
   const [guitarType,      setGuitarType]       = useState("6-string");
   const [customTuning,    setCustomTuning]     = useState([...DEFAULT_TUNING]);
   const [useCustomTuning, setUseCustomTuning]  = useState(false);
-  const [fretStart,       setFretStart]        = useState(0);
+  const [fretStart,       setFretStart]        = useState(1);
   const [fretEnd,         setFretEnd]          = useState(12);
   const [showFretNums,    setShowFretNums]      = useState(true);
   const [showStringNames, setShowStringNames]   = useState(true);
@@ -1299,7 +1295,7 @@ export default function FretboardPrinter() {
             <div style={{ maxWidth:"600px", animation:"fadeIn 0.2s ease" }}>
               <SL T={T}>QUICK SELECT</SL>
               <div style={{ display:"flex", flexWrap:"wrap", gap:"6px", marginBottom:"20px" }}>
-                {[[0,12,"Full neck (0–12)"],[0,4,"Open box (0–4)"],[3,7,"Frets 3–7"],[4,8,"Frets 4–8"],[5,9,"Frets 5–9"],[7,12,"Frets 7–12"],[1,5,"Frets 1–5"],[2,6,"Frets 2–6"]].map(([s,e,lbl])=>(
+                {[[1,12,"Full neck (1–12)"],[1,4,"Frets 1–4"],[1,5,"Frets 1–5"],[3,7,"Frets 3–7"],[4,8,"Frets 4–8"],[5,9,"Frets 5–9"],[7,12,"Frets 7–12"],[2,6,"Frets 2–6"]].map(([s,e,lbl])=>(
                   <button key={lbl} onClick={()=>{setFretStart(s);setFretEnd(e);}} style={{
                     padding:"7px 14px", borderRadius:"8px", fontSize:"12px",
                     border: fretStart===s&&fretEnd===e ? "1.5px solid #F59E0B" : `1.5px solid ${T.border}`,
@@ -1315,8 +1311,8 @@ export default function FretboardPrinter() {
                   <span style={{ fontSize:"10px",color:T.textLo,fontFamily:"'JetBrains Mono',monospace" }}>FROM FRET</span>
                   <select value={fretStart} onChange={e=>setFretStart(Number(e.target.value))}
                     style={{ background:T.inputBg,border:`1px solid ${T.border}`,borderRadius:"7px",color:T.textHi,padding:"7px 10px",fontSize:"13px",cursor:"pointer",width:"120px" }}>
-                    {Array.from({length:13},(_,i)=>i).filter(f=>f<fretEnd).map(f=>(
-                      <option key={f} value={f}>{f===0?"Open (0)":f}</option>
+                    {Array.from({length:12},(_,i)=>i+1).filter(f=>f<fretEnd).map(f=>(
+                      <option key={f} value={f}>{f}</option>
                     ))}
                   </select>
                 </div>
@@ -1646,7 +1642,7 @@ function MultiBoardModal({ boards, logoText, onClose, T }) {
                   })}
                   {b.showFretNums&&Array.from({length:fretCount},(_,fi)=>{
                     const fret=b.fretStart+fi;
-                    return<text key={fret} x={fbX+MARGIN_L+fi*fretW+fretW/2} y={fbY+MARGIN_T-5} textAnchor="middle" fontSize={7} fontFamily="'JetBrains Mono',monospace" fill="#aaa">{fret===0?"O":fret}</text>;
+                    return<text key={fret} x={fbX+MARGIN_L+fi*fretW+fretW/2} y={fbY+MARGIN_T-5} textAnchor="middle" fontSize={7} fontFamily="'JetBrains Mono',monospace" fill="#aaa">{fret===0?"Open":fret}</text>;
                   })}
                   {b.tuning.slice().reverse().map((note,di)=>(
                     <text key={di} x={fbX+MARGIN_L-5} y={fbY+MARGIN_T+di*strH+3} textAnchor="end" fontSize={7} fontFamily="'JetBrains Mono',monospace" fill="#aaa">{note}</text>
