@@ -599,7 +599,7 @@ const THEMES = {
 function CustomDotEditor({ layer, onChange, T, ic }) {
   const [pendingLabel, setPendingLabel] = useState("");
   const STRINGS = 6;
-  const FRETS = 13; // 0–12
+  const FRETS = 12; // 1–12
 
   const toggleDot = (string, fret) => {
     const existing = (layer.customDots || []);
@@ -659,17 +659,16 @@ function CustomDotEditor({ layer, onChange, T, ic }) {
 
       {/* Mini fretboard grid */}
       <TRow label={`CLICK TO PLACE DOTS — ${dotCount} placed`} T={T}>
-        <div style={{ overflowX:"auto" }}>
-          <div style={{ minWidth:"320px" }}>
+        <div style={{ overflowX:"auto", paddingBottom:"4px" }}>
+          <div style={{ width:`${18 + 12 * 26}px` }}>
             {/* Fret numbers */}
             <div style={{ display:"flex", marginLeft:"20px", marginBottom:"3px" }}>
               {Array.from({length:FRETS},(_,f)=>(
-                <div key={f} style={{
-                  width:"24px", textAlign:"center", fontSize:"8px", flexShrink:0,
-                  color: [3,5,7,9,12].includes(f) ? ic : T.fretNum,
+                <div key={f+1} style={{
+                  width:"26px", textAlign:"center", fontSize:"8px", flexShrink:0,
+                  color: [3,5,7,9,12].includes(f+1) ? ic : T.fretNum,
                   fontFamily:"'JetBrains Mono',monospace",
-                  margin:"0 1px",
-                }}>{f===0?"Op":f}</div>
+                }}>{f+1}</div>
               ))}
             </div>
             {/* Strings */}
@@ -680,14 +679,15 @@ function CustomDotEditor({ layer, onChange, T, ic }) {
                   <div style={{ width:"18px", fontSize:"8px", color:T.fretHi, fontFamily:"'JetBrains Mono',monospace", textAlign:"right", paddingRight:"3px", flexShrink:0 }}>
                     {openNote}
                   </div>
-                  {Array.from({length:FRETS},(_,fret)=>{
+                  {Array.from({length:FRETS},(_,f)=>{
+                    const fret = f + 1;
                     const hasDot = (layer.customDots||[]).some(d=>d.string===si&&d.fret===fret);
                     return (
                       <div
                         key={fret}
                         onClick={() => toggleDot(si, fret)}
                         style={{
-                          width:"22px", height:"18px", flexShrink:0,
+                          width:"24px", height:"18px", flexShrink:0,
                           border: `1px solid ${T.border}`,
                           borderRadius:"3px",
                           background: hasDot ? ic : T.surface2,
