@@ -669,9 +669,10 @@ function CustomDotEditor({ layer, onChange, T, ic }) {
             <div style={{ display:"flex", marginLeft:"20px", marginBottom:"3px" }}>
               {Array.from({length:FRETS},(_,f)=>(
                 <div key={f} style={{
-                  width:"22px", textAlign:"center", fontSize:"8px", flexShrink:0,
+                  width:"24px", textAlign:"center", fontSize:"8px", flexShrink:0,
                   color: [3,5,7,9,12].includes(f) ? ic : T.fretNum,
                   fontFamily:"'JetBrains Mono',monospace",
+                  margin:"0 1px",
                 }}>{f===0?"O":f}</div>
               ))}
             </div>
