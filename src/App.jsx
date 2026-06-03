@@ -604,10 +604,14 @@ function LayerEditor({ layer, onChange, onRemove, isOnly, T }) {
   const [expanded, setExpanded] = useState(true);
   const update = (key, val) => onChange({ ...layer, [key]: val });
   const typeOptions = Object.keys(TYPE_DATA);
-  const nameOptions = layer.type ? Object.keys(TYPE_DATA[layer.type]) : [];
+  const nameOptions = layer.type && TYPE_DATA[layer.type] ? Object.keys(TYPE_DATA[layer.type]) : [];
   const ic = layer.color;
 
   const handleTypeChange = (t) => {
+    if (t === "Custom") {
+      onChange({ ...layer, type:"Custom", intervals:[], customDots:layer.customDots||[] });
+      return;
+    }
     const names = Object.keys(TYPE_DATA[t]);
     onChange({ ...layer, type:t, name:names[0], intervals:TYPE_DATA[t][names[0]] });
   };
@@ -905,8 +909,6 @@ export default function FretboardPrinter() {
   // Multi-board
   const [multiBoards,     setMultiBoards]      = useState([]);
   const [showMultiPrint,  setShowMultiPrint]   = useState(false);
-  // Blank sheet
-  const [showBlankSheet,  setShowBlankSheet]   = useState(false);
 
   const T = isDark ? THEMES.dark : THEMES.light;
 
@@ -1387,16 +1389,6 @@ export default function FretboardPrinter() {
               <p style={{ fontSize:"12px",color:T.textLo,lineHeight:"1.6" }}>
                 B&W mode, portrait/landscape, practice notes area — then print or save as SVG.
               </p>
-              <div style={{ height:"1px",background:T.border,marginBottom:"20px",marginTop:"10px" }}/>
-              <SL T={T}>BLANK FRETBOARD SHEET</SL>
-              <button onClick={()=>setShowBlankSheet(true)} style={{
-                padding:"12px 28px",borderRadius:"10px",fontSize:"14px",fontWeight:"700",
-                border:"1.5px solid #06B6D4",background:"#082f49",color:"#22d3ee",
-                cursor:"pointer",display:"flex",alignItems:"center",gap:"8px",marginBottom:"10px",
-              }}>📄 Print Blank Fretboard Sheet</button>
-              <p style={{ fontSize:"12px",color:T.textLo,lineHeight:"1.6" }}>
-                Prints 5 blank fretboard diagrams per page — ready to fill in by hand. Includes fret markers and unlocktheguitar.net branding.
-              </p>
             </div>
           )}
         </div>
@@ -1413,13 +1405,6 @@ export default function FretboardPrinter() {
       {showMultiPrint && (
         <div style={{ position:"fixed",inset:0,background:"rgba(0,0,0,0.85)",zIndex:1000,display:"flex",alignItems:"center",justifyContent:"center",padding:"20px" }}>
           <MultiBoardModal boards={multiBoards} logoText={logoText} onClose={()=>setShowMultiPrint(false)} T={T}/>
-        </div>
-      )}
-
-      {/* ── Blank sheet modal ── */}
-      {showBlankSheet && (
-        <div style={{ position:"fixed",inset:0,background:"rgba(0,0,0,0.85)",zIndex:1000,display:"flex",alignItems:"center",justifyContent:"center",padding:"20px" }}>
-          <BlankSheetModal tuning={tuning} logoText={logoText} onClose={()=>setShowBlankSheet(false)} T={T}/>
         </div>
       )}
     </div>
@@ -1562,188 +1547,6 @@ function MultiBoardModal({ boards, logoText, onClose, T }) {
               );
             })}
             {logoText&&<text x={pageW-pad} y={pageH-10} textAnchor="end" fontSize={8} fontFamily="'JetBrains Mono',monospace" fill="#ccc" letterSpacing="1">{logoText}</text>}
-          </svg>
-        </div>
-      </div>
-    </div>
-  );
-}
-
-// ─── Blank Sheet Modal ────────────────────────────────────────────────────────
-
-function BlankSheetModal({ tuning, logoText, onClose, T }) {
-  const svgRef = useRef(null);
-  const [numDiagrams, setNumDiagrams] = useState(5);
-  const [showStringNames, setShowStringNames] = useState(true);
-  const [showFretNums, setShowFretNums] = useState(true);
-  const [fretCount, setFretCount] = useState(12);
-  const [sheetTitle, setSheetTitle] = useState("Blank Fretboard Diagrams");
-
-  // Page dimensions (A4 portrait)
-  const pageW = 595;
-  const pageH = 842;
-  const pad = 30;
-  const titleH = 36;
-  const footerH = 20;
-  const availH = pageH - pad*2 - titleH - footerH;
-  const diagGap = 12;
-  const diagH = Math.floor((availH - diagGap * (numDiagrams - 1)) / numDiagrams);
-
-  // Fretboard dimensions within each diagram
-  const marginL = showStringNames ? 22 : 10;
-  const marginT = showFretNums ? 18 : 8;
-  const marginR = 10;
-  const marginB = 8;
-  const fbW = pageW - pad*2 - marginL - marginR;
-  const fretW = Math.floor(fbW / fretCount);
-  const strings = tuning.length;
-  const strH = Math.floor((diagH - marginT - marginB) / (strings - 1));
-
-  const handlePrint = () => {
-    const svgEl = svgRef.current?.querySelector("svg");
-    if (!svgEl) return;
-    const svgStr = new XMLSerializer().serializeToString(svgEl);
-    const url = "data:image/svg+xml;charset=utf-8," + encodeURIComponent(svgStr);
-    const win = window.open("","_blank","width=700,height=900");
-    if (!win) return;
-    win.document.write(`<!DOCTYPE html><html><head>
-      <style>@page{size:A4 portrait;margin:0}body{margin:0;background:#fff}img{width:100%;display:block}</style>
-      </head><body><img src="${url}" onload="setTimeout(()=>{window.print();},300)"/></body></html>`);
-    win.document.close();
-  };
-
-  const handleSVG = () => {
-    const svgEl = svgRef.current?.querySelector("svg");
-    if (!svgEl) return;
-    const svgStr = new XMLSerializer().serializeToString(svgEl);
-    const blob = new Blob([svgStr],{type:"image/svg+xml"});
-    const a = document.createElement("a");
-    a.href = URL.createObjectURL(blob);
-    a.download = "blank-fretboard-diagrams.svg";
-    a.click();
-  };
-
-  // Render a single blank fretboard at position (x, y)
-  const renderBlankFretboard = (x, y, idx) => {
-    const fbX = x + marginL;
-    const fbY = y + marginT;
-    const fbBtm = fbY + (strings - 1) * strH;
-    const fbRight = fbX + fretCount * fretW;
-
-    return (
-      <g key={idx}>
-        {/* Nut */}
-        <rect x={fbX - 2} y={fbY} width={4} height={(strings-1)*strH} fill="#555"/>
-
-        {/* Fret lines */}
-        {Array.from({length: fretCount + 1}, (_, fi) => (
-          <line key={fi}
-            x1={fbX + fi*fretW} y1={fbY}
-            x2={fbX + fi*fretW} y2={fbBtm}
-            stroke="#bbb" strokeWidth={0.7}/>
-        ))}
-
-        {/* String lines */}
-        {Array.from({length: strings}, (_, si) => (
-          <line key={si}
-            x1={fbX} y1={fbY + si*strH}
-            x2={fbRight} y2={fbY + si*strH}
-            stroke="#999" strokeWidth={0.6 + si * 0.12}/>
-        ))}
-
-        {/* Fret position markers (3,5,7,9,12) */}
-        {Array.from({length: fretCount}, (_, fi) => {
-          const fret = fi + 1;
-          const cx = fbX + fi*fretW + fretW/2;
-          const midY = fbY + ((strings-1)/2) * strH;
-          if ([3,5,7,9].includes(fret)) {
-            return <circle key={fret} cx={cx} cy={midY} r={3} fill="#ddd"/>;
-          }
-          if (fret === 12) {
-            return (
-              <g key={fret}>
-                <circle cx={cx} cy={midY - strH} r={2.5} fill="#ddd"/>
-                <circle cx={cx} cy={midY + strH} r={2.5} fill="#ddd"/>
-              </g>
-            );
-          }
-          return null;
-        })}
-
-        {/* Fret numbers */}
-        {showFretNums && Array.from({length: fretCount}, (_, fi) => (
-          <text key={fi}
-            x={fbX + fi*fretW + fretW/2} y={fbY - 5}
-            textAnchor="middle" fontSize={7}
-            fontFamily="'JetBrains Mono',monospace" fill="#aaa">
-            {fi + 1}
-          </text>
-        ))}
-
-        {/* String names */}
-        {showStringNames && tuning.slice().reverse().map((note, si) => (
-          <text key={si}
-            x={fbX - 5} y={fbY + si*strH + 3}
-            textAnchor="end" fontSize={7}
-            fontFamily="'JetBrains Mono',monospace" fill="#aaa">
-            {note}
-          </text>
-        ))}
-      </g>
-    );
-  };
-
-  return (
-    <div style={{ background:T.surface, borderRadius:"16px", border:`1px solid ${T.border}`, width:"100%", maxWidth:"700px", maxHeight:"90vh", display:"flex", flexDirection:"column", overflow:"hidden" }}>
-      {/* Header */}
-      <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", padding:"14px 20px", borderBottom:`1px solid ${T.border}`, flexWrap:"wrap", gap:"8px" }}>
-        <span style={{ fontSize:"13px", fontWeight:"700", color:T.textHi }}>Blank Fretboard Sheet</span>
-        <div style={{ display:"flex", gap:"6px", flexWrap:"wrap", alignItems:"center" }}>
-          <input
-            value={sheetTitle}
-            onChange={e => setSheetTitle(e.target.value)}
-            placeholder="Sheet title"
-            style={{ background:T.inputBg, border:`1px solid ${T.border}`, borderRadius:"6px", color:T.textHi, padding:"4px 8px", fontSize:"11px", width:"180px", outline:"none", fontFamily:"Georgia,serif", fontStyle:"italic" }}
-          />
-          <span style={{ fontSize:"11px", color:T.textLo, fontFamily:"'JetBrains Mono',monospace" }}>Diagrams:</span>
-          {[3,4,5,6].map(n => (
-            <MiniBtn key={n} onClick={() => setNumDiagrams(n)} active={numDiagrams===n} T={T}>{n}</MiniBtn>
-          ))}
-          <span style={{ fontSize:"11px", color:T.textLo, fontFamily:"'JetBrains Mono',monospace", marginLeft:"4px" }}>Frets:</span>
-          {[12,15,17].map(n => (
-            <MiniBtn key={n} onClick={() => setFretCount(n)} active={fretCount===n} T={T}>{n}</MiniBtn>
-          ))}
-          <MiniBtn onClick={() => setShowStringNames(s => !s)} active={showStringNames} T={T}>String names</MiniBtn>
-          <MiniBtn onClick={() => setShowFretNums(s => !s)} active={showFretNums} T={T}>Fret nos.</MiniBtn>
-          <button onClick={handleSVG} style={{ padding:"5px 12px", borderRadius:"6px", fontSize:"11px", border:"1.5px solid #06B6D4", background:"#082f49", color:"#22d3ee", cursor:"pointer" }}>Save SVG</button>
-          <button onClick={handlePrint} style={{ padding:"5px 12px", borderRadius:"6px", fontSize:"11px", border:"1.5px solid #22C55E", background:"#052e16", color:"#4ade80", cursor:"pointer", fontWeight:"600" }}>🖨 Print</button>
-          <button onClick={onClose} style={{ padding:"5px 12px", borderRadius:"6px", fontSize:"11px", border:`1.5px solid ${T.border}`, background:"transparent", color:T.textMid, cursor:"pointer" }}>Close</button>
-        </div>
-      </div>
-
-      {/* Preview */}
-      <div style={{ flex:1, overflow:"auto", padding:"24px", background:T.bg, display:"flex", justifyContent:"center" }}>
-        <div ref={svgRef} style={{ background:"#fff", boxShadow:"0 8px 40px rgba(0,0,0,0.4)", borderRadius:"3px", flexShrink:0 }}>
-          <svg xmlns="http://www.w3.org/2000/svg" width={pageW} height={pageH} viewBox={`0 0 ${pageW} ${pageH}`}>
-            <rect width={pageW} height={pageH} fill="#fff"/>
-
-            {/* Title */}
-            <text x={pageW/2} y={pad + 22} textAnchor="middle" fontSize={14}
-              fontFamily="Georgia,serif" fontStyle="italic" fill="#333">
-              {sheetTitle || "Blank Fretboard Diagrams"}
-            </text>
-
-            {/* Diagrams */}
-            {Array.from({length: numDiagrams}, (_, i) => {
-              const y = pad + titleH + i * (diagH + diagGap);
-              return renderBlankFretboard(pad, y, i);
-            })}
-
-            {/* Footer */}
-            <text x={pageW/2} y={pageH - 10} textAnchor="middle" fontSize={8}
-              fontFamily="'JetBrains Mono',monospace" fill="#bbb" letterSpacing="1">
-              {logoText || "unlocktheguitar.net"}
-            </text>
           </svg>
         </div>
       </div>
