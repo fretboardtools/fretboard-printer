@@ -33,6 +33,7 @@ const SCALES = {
   "Byzantine":            [0,1,4,5,7,8,11],
   "Whole Tone":           [0,2,4,6,8,10],
   "Diminished (HW)":      [0,1,3,4,6,7,9,10],
+  "Diminished (WH)":      [0,2,3,5,6,8,9,11],
   "Lydian b7":            [0,2,4,6,7,9,10],
   "Prometheus":           [0,2,4,6,9,10],
   "Hirajoshi":            [0,2,3,7,8],
