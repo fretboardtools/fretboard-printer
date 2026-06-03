@@ -33,7 +33,6 @@ const SCALES = {
   "Byzantine":            [0,1,4,5,7,8,11],
   "Whole Tone":           [0,2,4,6,8,10],
   "Diminished (HW)":      [0,1,3,4,6,7,9,10],
-  "Diminished (WH)":      [0,2,3,5,6,8,9,11],
   "Lydian b7":            [0,2,4,6,7,9,10],
   "Prometheus":           [0,2,4,6,9,10],
   "Hirajoshi":            [0,2,3,7,8],
@@ -256,7 +255,11 @@ function FretboardSVG({
       {/* Background */}
       <rect width={svgW} height={svgH} fill={bwMode ? "#fff" : isDark ? "#1a1f2e" : "#f8f9fc"}/>
 
-      {/* Nut — always shown since fretboard starts at fret 1 */}
+      {/* Nut */}
+      {fretStart === 0 && (
+        <rect x={MARGIN_L-2} y={MARGIN_T} width={5}
+          height={(strings-1)*STRING_H} fill={bwMode?"#000":isDark?"#8899aa":"#5a6880"}/>
+      )}
       {fretStart === 1 && (
         <rect x={MARGIN_L-2} y={MARGIN_T} width={4}
           height={(strings-1)*STRING_H} fill={bwMode?"#000":isDark?"#8899aa":"#5a6880"}/>
@@ -316,7 +319,7 @@ function FretboardSVG({
             fontFamily="'JetBrains Mono',monospace"
             fill={bwMode?"#000":isDark?"#5a7090":"#8899aa"}
             fontWeight={[3,5,7,9,12].includes(fret)?"700":"400"}>
-            {fret === 0 ? "Open" : fret}
+            {fret === 0 ? "O" : fret}
           </text>
         );
       })}
@@ -498,7 +501,7 @@ function PrintPageSVG({
           textAnchor="middle" fontSize={10}
           fontFamily="'JetBrains Mono',monospace"
           fill="#888" fontWeight={[3,5,7,9,12].includes(fret)?"700":"400"}>
-          {fret===0?"Open":fret}
+          {fret===0?"O":fret}
         </text>;
       })}
 
@@ -595,144 +598,16 @@ const THEMES = {
   },
 };
 
-// ─── Custom Dot Editor ───────────────────────────────────────────────────────
-
-function CustomDotEditor({ layer, onChange, T, ic }) {
-  const [pendingLabel, setPendingLabel] = useState("");
-  const STRINGS = 6;
-  const FRETS = 12; // 1–12
-
-  const toggleDot = (string, fret) => {
-    const existing = (layer.customDots || []);
-    const idx = existing.findIndex(d => d.string === string && d.fret === fret);
-    let updated;
-    if (idx >= 0) {
-      // Remove dot
-      updated = existing.filter((_, i) => i !== idx);
-    } else {
-      // Add dot
-      updated = [...existing, {
-        string,
-        fret,
-        note: addSemi(["E","A","D","G","B","E"][string], fret),
-        label: pendingLabel,
-        color: layer.color,
-        shape: layer.shape || "circle",
-        size: layer.size || "medium",
-        isRoot: false,
-        layerId: layer.id,
-      }];
-    }
-    onChange({ ...layer, customDots: updated });
-  };
-
-  const clearAll = () => onChange({ ...layer, customDots: [] });
-
-  const dotCount = (layer.customDots || []).length;
-  const displayStrings = [5,4,3,2,1,0]; // high E at top
-
-  return (
-    <div>
-      {/* Label input */}
-      <TRow label="DOT LABEL (optional — set before clicking)" T={T}>
-        <div style={{ display:"flex", gap:"6px" }}>
-          <input
-            value={pendingLabel}
-            onChange={e => setPendingLabel(e.target.value)}
-            placeholder="e.g. R, 3, b7, or blank"
-            maxLength={4}
-            style={{
-              flex:1, background:T.inputBg, border:`1px solid ${T.border}`,
-              borderRadius:"6px", color:T.textHi, padding:"5px 8px",
-              fontSize:"12px", outline:"none",
-              fontFamily:"'JetBrains Mono',monospace",
-            }}
-          />
-          {dotCount > 0 && (
-            <button onClick={clearAll} style={{
-              padding:"5px 10px", borderRadius:"6px", fontSize:"11px",
-              border:"1px solid #ef4444", background:"transparent",
-              color:"#ef4444", cursor:"pointer",
-            }}>Clear all</button>
-          )}
-        </div>
-      </TRow>
-
-      {/* Mini fretboard grid */}
-      <TRow label={`CLICK TO PLACE DOTS — ${dotCount} placed`} T={T}>
-        <div style={{ overflowX:"auto", paddingBottom:"4px" }}>
-          <div style={{ width:`${18 + 12 * 26}px` }}>
-            {/* Fret numbers */}
-            <div style={{ display:"flex", marginLeft:"20px", marginBottom:"3px" }}>
-              {Array.from({length:FRETS},(_,f)=>(
-                <div key={f+1} style={{
-                  width:"26px", textAlign:"center", fontSize:"8px", flexShrink:0,
-                  color: [3,5,7,9,12].includes(f+1) ? ic : T.fretNum,
-                  fontFamily:"'JetBrains Mono',monospace",
-                }}>{f+1}</div>
-              ))}
-            </div>
-            {/* Strings */}
-            {displayStrings.map(si => {
-              const openNote = ["E","A","D","G","B","E"][si];
-              return (
-                <div key={si} style={{ display:"flex", alignItems:"center", marginBottom:"2px" }}>
-                  <div style={{ width:"18px", fontSize:"8px", color:T.fretHi, fontFamily:"'JetBrains Mono',monospace", textAlign:"right", paddingRight:"3px", flexShrink:0 }}>
-                    {openNote}
-                  </div>
-                  {Array.from({length:FRETS},(_,f)=>{
-                    const fret = f + 1;
-                    const hasDot = (layer.customDots||[]).some(d=>d.string===si&&d.fret===fret);
-                    return (
-                      <div
-                        key={fret}
-                        onClick={() => toggleDot(si, fret)}
-                        style={{
-                          width:"24px", height:"18px", flexShrink:0,
-                          border: `1px solid ${T.border}`,
-                          borderRadius:"3px",
-                          background: hasDot ? ic : T.surface2,
-                          cursor:"pointer",
-                          display:"flex", alignItems:"center", justifyContent:"center",
-                          transition:"all 0.1s",
-                          margin:"0 1px",
-                        }}
-                      >
-                        {hasDot && (
-                          <span style={{ fontSize:"7px", color:"#fff", fontWeight:"700", fontFamily:"'JetBrains Mono',monospace" }}>
-                            {(layer.customDots||[]).find(d=>d.string===si&&d.fret===fret)?.label || ""}
-                          </span>
-                        )}
-                      </div>
-                    );
-                  })}
-                </div>
-              );
-            })}
-          </div>
-        </div>
-        <div style={{ fontSize:"10px", color:T.textMute, marginTop:"6px" }}>
-          Set a label above, then click any cell to place a dot. Click again to remove.
-        </div>
-      </TRow>
-    </div>
-  );
-}
-
 // ─── Layer Editor ─────────────────────────────────────────────────────────────
 
 function LayerEditor({ layer, onChange, onRemove, isOnly, T }) {
   const [expanded, setExpanded] = useState(true);
   const update = (key, val) => onChange({ ...layer, [key]: val });
   const typeOptions = Object.keys(TYPE_DATA);
-  const nameOptions = layer.type && TYPE_DATA[layer.type] ? Object.keys(TYPE_DATA[layer.type]) : [];
+  const nameOptions = layer.type ? Object.keys(TYPE_DATA[layer.type]) : [];
   const ic = layer.color;
 
   const handleTypeChange = (t) => {
-    if (t === "Custom") {
-      onChange({ ...layer, type:"Custom", intervals:[], customDots:layer.customDots||[] });
-      return;
-    }
     const names = Object.keys(TYPE_DATA[t]);
     onChange({ ...layer, type:t, name:names[0], intervals:TYPE_DATA[t][names[0]] });
   };
@@ -802,10 +677,6 @@ function LayerEditor({ layer, onChange, onRemove, isOnly, T }) {
               </select>
             </TRow>
           </>}
-
-          {layer.type === "Custom" && (
-            <CustomDotEditor layer={layer} onChange={onChange} T={T} ic={ic}/>
-          )}
 
           <TRow label="LABELS" T={T}>
             <div style={{ display:"flex", gap:"4px", flexWrap:"wrap" }}>
@@ -971,20 +842,20 @@ function PrintModalInner({ settings, tuning, fretStart, fretEnd, dots, onClose, 
 // ─── Built-in presets ─────────────────────────────────────────────────────────
 
 const BUILT_IN_PRESETS = [
-  { name:"A Minor Pentatonic — Full Neck",   guitarType:"6-string", tuningPreset:"Standard (EADGBe)", fretStart:1, fretEnd:12, title:"A Minor Pentatonic", subtitle:"Full neck overview", layers:[{ type:"Scale", root:"A", name:"Minor Pentatonic", labelMode:"interval", shape:"circle", size:"medium", color:"#E85D3A" }] },
-  { name:"A Blues Scale — Full Neck",        guitarType:"6-string", tuningPreset:"Standard (EADGBe)", fretStart:1, fretEnd:12, title:"A Blues Scale",       subtitle:"", layers:[{ type:"Scale", root:"A", name:"Blues", labelMode:"interval", shape:"circle", size:"medium", color:"#3A8FE8" }] },
-  { name:"A Minor Penta — Open Box (0–4)",   guitarType:"6-string", tuningPreset:"Standard (EADGBe)", fretStart:1, fretEnd:4,  title:"A Minor Pentatonic — Position 1", subtitle:"Open position box", layers:[{ type:"Scale", root:"A", name:"Minor Pentatonic", labelMode:"interval", shape:"circle", size:"medium", color:"#E85D3A" }] },
+  { name:"A Minor Pentatonic — Full Neck",   guitarType:"6-string", tuningPreset:"Standard (EADGBe)", fretStart:0, fretEnd:12, title:"A Minor Pentatonic", subtitle:"Full neck overview", layers:[{ type:"Scale", root:"A", name:"Minor Pentatonic", labelMode:"interval", shape:"circle", size:"medium", color:"#E85D3A" }] },
+  { name:"A Blues Scale — Full Neck",        guitarType:"6-string", tuningPreset:"Standard (EADGBe)", fretStart:0, fretEnd:12, title:"A Blues Scale",       subtitle:"", layers:[{ type:"Scale", root:"A", name:"Blues", labelMode:"interval", shape:"circle", size:"medium", color:"#3A8FE8" }] },
+  { name:"A Minor Penta — Open Box (0–4)",   guitarType:"6-string", tuningPreset:"Standard (EADGBe)", fretStart:0, fretEnd:4,  title:"A Minor Pentatonic — Position 1", subtitle:"Open position box", layers:[{ type:"Scale", root:"A", name:"Minor Pentatonic", labelMode:"interval", shape:"circle", size:"medium", color:"#E85D3A" }] },
   { name:"A Minor Penta — Box 2 (5–9)",      guitarType:"6-string", tuningPreset:"Standard (EADGBe)", fretStart:5, fretEnd:9,  title:"A Minor Pentatonic — Position 2", subtitle:"5th position box", layers:[{ type:"Scale", root:"A", name:"Minor Pentatonic", labelMode:"interval", shape:"circle", size:"medium", color:"#E85D3A" }] },
   { name:"A Minor Penta — Box 3 (7–11)",     guitarType:"6-string", tuningPreset:"Standard (EADGBe)", fretStart:7, fretEnd:11, title:"A Minor Pentatonic — Position 3", subtitle:"7th position box", layers:[{ type:"Scale", root:"A", name:"Minor Pentatonic", labelMode:"interval", shape:"circle", size:"medium", color:"#E85D3A" }] },
-  { name:"A Natural Minor — Full Neck",      guitarType:"6-string", tuningPreset:"Standard (EADGBe)", fretStart:1, fretEnd:12, title:"A Natural Minor",    subtitle:"Aeolian mode", layers:[{ type:"Scale", root:"A", name:"Natural Minor", labelMode:"note", shape:"circle", size:"medium", color:"#9B59B6" }] },
-  { name:"A Major Scale — Full Neck",        guitarType:"6-string", tuningPreset:"Standard (EADGBe)", fretStart:1, fretEnd:12, title:"A Major Scale",      subtitle:"", layers:[{ type:"Scale", root:"A", name:"Major", labelMode:"note", shape:"circle", size:"medium", color:"#2ECC71" }] },
-  { name:"A Dorian — Full Neck",             guitarType:"6-string", tuningPreset:"Standard (EADGBe)", fretStart:1, fretEnd:12, title:"A Dorian",           subtitle:"Mode II — minor with natural 6th", layers:[{ type:"Scale", root:"A", name:"Dorian", labelMode:"interval", shape:"circle", size:"medium", color:"#1ABC9C" }] },
-  { name:"A Mixolydian — Full Neck",         guitarType:"6-string", tuningPreset:"Standard (EADGBe)", fretStart:1, fretEnd:12, title:"A Mixolydian",       subtitle:"Mode V — major with b7", layers:[{ type:"Scale", root:"A", name:"Mixolydian", labelMode:"interval", shape:"circle", size:"medium", color:"#F0A500" }] },
-  { name:"Am7 Arpeggio — Full Neck",         guitarType:"6-string", tuningPreset:"Standard (EADGBe)", fretStart:1, fretEnd:12, title:"Am7 Arpeggio",       subtitle:"R · b3 · 5 · b7", layers:[{ type:"Arpeggio", root:"A", name:"Min7", labelMode:"interval", shape:"diamond", size:"medium", color:"#6366F1" }] },
-  { name:"A7 Arpeggio — Full Neck",          guitarType:"6-string", tuningPreset:"Standard (EADGBe)", fretStart:1, fretEnd:12, title:"A7 Arpeggio",        subtitle:"R · 3 · 5 · b7", layers:[{ type:"Arpeggio", root:"A", name:"Dom7", labelMode:"interval", shape:"diamond", size:"medium", color:"#EF4444" }] },
-  { name:"Penta + Blues Note overlay",       guitarType:"6-string", tuningPreset:"Standard (EADGBe)", fretStart:1, fretEnd:12, title:"Pentatonic + Blue Note", subtitle:"Pentatonic shell with added b5", layers:[{ type:"Scale", root:"A", name:"Minor Pentatonic", labelMode:"interval", shape:"circle", size:"medium", color:"#E85D3A" },{ type:"Scale", root:"A", name:"Blues", labelMode:"interval", shape:"circle", size:"small", color:"#2ECC71" }] },
-  { name:"Am Chord — Full Neck",             guitarType:"6-string", tuningPreset:"Standard (EADGBe)", fretStart:1, fretEnd:12, title:"Am Chord Tones",     subtitle:"R · b3 · 5 — all positions", layers:[{ type:"Chord", root:"A", name:"Minor (triad)", labelMode:"interval", shape:"square", size:"medium", color:"#6366F1" }] },
-  { name:"A Dom7 Chord — Full Neck",         guitarType:"6-string", tuningPreset:"Standard (EADGBe)", fretStart:1, fretEnd:12, title:"A7 Chord Tones",     subtitle:"R · 3 · 5 · b7 — all positions", layers:[{ type:"Chord", root:"A", name:"Dominant 7", labelMode:"interval", shape:"square", size:"medium", color:"#EF4444" }] },
+  { name:"A Natural Minor — Full Neck",      guitarType:"6-string", tuningPreset:"Standard (EADGBe)", fretStart:0, fretEnd:12, title:"A Natural Minor",    subtitle:"Aeolian mode", layers:[{ type:"Scale", root:"A", name:"Natural Minor", labelMode:"note", shape:"circle", size:"medium", color:"#9B59B6" }] },
+  { name:"A Major Scale — Full Neck",        guitarType:"6-string", tuningPreset:"Standard (EADGBe)", fretStart:0, fretEnd:12, title:"A Major Scale",      subtitle:"", layers:[{ type:"Scale", root:"A", name:"Major", labelMode:"note", shape:"circle", size:"medium", color:"#2ECC71" }] },
+  { name:"A Dorian — Full Neck",             guitarType:"6-string", tuningPreset:"Standard (EADGBe)", fretStart:0, fretEnd:12, title:"A Dorian",           subtitle:"Mode II — minor with natural 6th", layers:[{ type:"Scale", root:"A", name:"Dorian", labelMode:"interval", shape:"circle", size:"medium", color:"#1ABC9C" }] },
+  { name:"A Mixolydian — Full Neck",         guitarType:"6-string", tuningPreset:"Standard (EADGBe)", fretStart:0, fretEnd:12, title:"A Mixolydian",       subtitle:"Mode V — major with b7", layers:[{ type:"Scale", root:"A", name:"Mixolydian", labelMode:"interval", shape:"circle", size:"medium", color:"#F0A500" }] },
+  { name:"Am7 Arpeggio — Full Neck",         guitarType:"6-string", tuningPreset:"Standard (EADGBe)", fretStart:0, fretEnd:12, title:"Am7 Arpeggio",       subtitle:"R · b3 · 5 · b7", layers:[{ type:"Arpeggio", root:"A", name:"Min7", labelMode:"interval", shape:"diamond", size:"medium", color:"#6366F1" }] },
+  { name:"A7 Arpeggio — Full Neck",          guitarType:"6-string", tuningPreset:"Standard (EADGBe)", fretStart:0, fretEnd:12, title:"A7 Arpeggio",        subtitle:"R · 3 · 5 · b7", layers:[{ type:"Arpeggio", root:"A", name:"Dom7", labelMode:"interval", shape:"diamond", size:"medium", color:"#EF4444" }] },
+  { name:"Penta + Blues Note overlay",       guitarType:"6-string", tuningPreset:"Standard (EADGBe)", fretStart:0, fretEnd:12, title:"Pentatonic + Blue Note", subtitle:"Pentatonic shell with added b5", layers:[{ type:"Scale", root:"A", name:"Minor Pentatonic", labelMode:"interval", shape:"circle", size:"medium", color:"#E85D3A" },{ type:"Scale", root:"A", name:"Blues", labelMode:"interval", shape:"circle", size:"small", color:"#2ECC71" }] },
+  { name:"Am Chord — Full Neck",             guitarType:"6-string", tuningPreset:"Standard (EADGBe)", fretStart:0, fretEnd:12, title:"Am Chord Tones",     subtitle:"R · b3 · 5 — all positions", layers:[{ type:"Chord", root:"A", name:"Minor (triad)", labelMode:"interval", shape:"square", size:"medium", color:"#6366F1" }] },
+  { name:"A Dom7 Chord — Full Neck",         guitarType:"6-string", tuningPreset:"Standard (EADGBe)", fretStart:0, fretEnd:12, title:"A7 Chord Tones",     subtitle:"R · 3 · 5 · b7 — all positions", layers:[{ type:"Chord", root:"A", name:"Dominant 7", labelMode:"interval", shape:"square", size:"medium", color:"#EF4444" }] },
 ];
 
 let layerIdCounter = 1;
@@ -1018,7 +889,7 @@ export default function FretboardPrinter() {
   const [guitarType,      setGuitarType]       = useState("6-string");
   const [customTuning,    setCustomTuning]     = useState([...DEFAULT_TUNING]);
   const [useCustomTuning, setUseCustomTuning]  = useState(false);
-  const [fretStart,       setFretStart]        = useState(1);
+  const [fretStart,       setFretStart]        = useState(0);
   const [fretEnd,         setFretEnd]          = useState(12);
   const [showFretNums,    setShowFretNums]      = useState(true);
   const [showStringNames, setShowStringNames]   = useState(true);
@@ -1034,6 +905,8 @@ export default function FretboardPrinter() {
   // Multi-board
   const [multiBoards,     setMultiBoards]      = useState([]);
   const [showMultiPrint,  setShowMultiPrint]   = useState(false);
+  // Blank sheet
+  const [showBlankSheet,  setShowBlankSheet]   = useState(false);
 
   const T = isDark ? THEMES.dark : THEMES.light;
 
@@ -1296,7 +1169,7 @@ export default function FretboardPrinter() {
             <div style={{ maxWidth:"600px", animation:"fadeIn 0.2s ease" }}>
               <SL T={T}>QUICK SELECT</SL>
               <div style={{ display:"flex", flexWrap:"wrap", gap:"6px", marginBottom:"20px" }}>
-                {[[1,12,"Full neck (1–12)"],[1,4,"Frets 1–4"],[1,5,"Frets 1–5"],[3,7,"Frets 3–7"],[4,8,"Frets 4–8"],[5,9,"Frets 5–9"],[7,12,"Frets 7–12"],[2,6,"Frets 2–6"]].map(([s,e,lbl])=>(
+                {[[0,12,"Full neck (0–12)"],[0,4,"Open box (0–4)"],[3,7,"Frets 3–7"],[4,8,"Frets 4–8"],[5,9,"Frets 5–9"],[7,12,"Frets 7–12"],[1,5,"Frets 1–5"],[2,6,"Frets 2–6"]].map(([s,e,lbl])=>(
                   <button key={lbl} onClick={()=>{setFretStart(s);setFretEnd(e);}} style={{
                     padding:"7px 14px", borderRadius:"8px", fontSize:"12px",
                     border: fretStart===s&&fretEnd===e ? "1.5px solid #F59E0B" : `1.5px solid ${T.border}`,
@@ -1312,8 +1185,8 @@ export default function FretboardPrinter() {
                   <span style={{ fontSize:"10px",color:T.textLo,fontFamily:"'JetBrains Mono',monospace" }}>FROM FRET</span>
                   <select value={fretStart} onChange={e=>setFretStart(Number(e.target.value))}
                     style={{ background:T.inputBg,border:`1px solid ${T.border}`,borderRadius:"7px",color:T.textHi,padding:"7px 10px",fontSize:"13px",cursor:"pointer",width:"120px" }}>
-                    {Array.from({length:12},(_,i)=>i+1).filter(f=>f<fretEnd).map(f=>(
-                      <option key={f} value={f}>{f}</option>
+                    {Array.from({length:13},(_,i)=>i).filter(f=>f<fretEnd).map(f=>(
+                      <option key={f} value={f}>{f===0?"Open (0)":f}</option>
                     ))}
                   </select>
                 </div>
@@ -1514,6 +1387,16 @@ export default function FretboardPrinter() {
               <p style={{ fontSize:"12px",color:T.textLo,lineHeight:"1.6" }}>
                 B&W mode, portrait/landscape, practice notes area — then print or save as SVG.
               </p>
+              <div style={{ height:"1px",background:T.border,marginBottom:"20px",marginTop:"10px" }}/>
+              <SL T={T}>BLANK FRETBOARD SHEET</SL>
+              <button onClick={()=>setShowBlankSheet(true)} style={{
+                padding:"12px 28px",borderRadius:"10px",fontSize:"14px",fontWeight:"700",
+                border:"1.5px solid #06B6D4",background:"#082f49",color:"#22d3ee",
+                cursor:"pointer",display:"flex",alignItems:"center",gap:"8px",marginBottom:"10px",
+              }}>📄 Print Blank Fretboard Sheet</button>
+              <p style={{ fontSize:"12px",color:T.textLo,lineHeight:"1.6" }}>
+                Prints 5 blank fretboard diagrams per page — ready to fill in by hand. Includes fret markers and unlocktheguitar.net branding.
+              </p>
             </div>
           )}
         </div>
@@ -1530,6 +1413,13 @@ export default function FretboardPrinter() {
       {showMultiPrint && (
         <div style={{ position:"fixed",inset:0,background:"rgba(0,0,0,0.85)",zIndex:1000,display:"flex",alignItems:"center",justifyContent:"center",padding:"20px" }}>
           <MultiBoardModal boards={multiBoards} logoText={logoText} onClose={()=>setShowMultiPrint(false)} T={T}/>
+        </div>
+      )}
+
+      {/* ── Blank sheet modal ── */}
+      {showBlankSheet && (
+        <div style={{ position:"fixed",inset:0,background:"rgba(0,0,0,0.85)",zIndex:1000,display:"flex",alignItems:"center",justifyContent:"center",padding:"20px" }}>
+          <BlankSheetModal tuning={tuning} logoText={logoText} onClose={()=>setShowBlankSheet(false)} T={T}/>
         </div>
       )}
     </div>
@@ -1643,7 +1533,7 @@ function MultiBoardModal({ boards, logoText, onClose, T }) {
                   })}
                   {b.showFretNums&&Array.from({length:fretCount},(_,fi)=>{
                     const fret=b.fretStart+fi;
-                    return<text key={fret} x={fbX+MARGIN_L+fi*fretW+fretW/2} y={fbY+MARGIN_T-5} textAnchor="middle" fontSize={7} fontFamily="'JetBrains Mono',monospace" fill="#aaa">{fret===0?"Open":fret}</text>;
+                    return<text key={fret} x={fbX+MARGIN_L+fi*fretW+fretW/2} y={fbY+MARGIN_T-5} textAnchor="middle" fontSize={7} fontFamily="'JetBrains Mono',monospace" fill="#aaa">{fret===0?"O":fret}</text>;
                   })}
                   {b.tuning.slice().reverse().map((note,di)=>(
                     <text key={di} x={fbX+MARGIN_L-5} y={fbY+MARGIN_T+di*strH+3} textAnchor="end" fontSize={7} fontFamily="'JetBrains Mono',monospace" fill="#aaa">{note}</text>
@@ -1672,6 +1562,188 @@ function MultiBoardModal({ boards, logoText, onClose, T }) {
               );
             })}
             {logoText&&<text x={pageW-pad} y={pageH-10} textAnchor="end" fontSize={8} fontFamily="'JetBrains Mono',monospace" fill="#ccc" letterSpacing="1">{logoText}</text>}
+          </svg>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ─── Blank Sheet Modal ────────────────────────────────────────────────────────
+
+function BlankSheetModal({ tuning, logoText, onClose, T }) {
+  const svgRef = useRef(null);
+  const [numDiagrams, setNumDiagrams] = useState(5);
+  const [showStringNames, setShowStringNames] = useState(true);
+  const [showFretNums, setShowFretNums] = useState(true);
+  const [fretCount, setFretCount] = useState(12);
+  const [sheetTitle, setSheetTitle] = useState("Blank Fretboard Diagrams");
+
+  // Page dimensions (A4 portrait)
+  const pageW = 595;
+  const pageH = 842;
+  const pad = 30;
+  const titleH = 36;
+  const footerH = 20;
+  const availH = pageH - pad*2 - titleH - footerH;
+  const diagGap = 12;
+  const diagH = Math.floor((availH - diagGap * (numDiagrams - 1)) / numDiagrams);
+
+  // Fretboard dimensions within each diagram
+  const marginL = showStringNames ? 22 : 10;
+  const marginT = showFretNums ? 18 : 8;
+  const marginR = 10;
+  const marginB = 8;
+  const fbW = pageW - pad*2 - marginL - marginR;
+  const fretW = Math.floor(fbW / fretCount);
+  const strings = tuning.length;
+  const strH = Math.floor((diagH - marginT - marginB) / (strings - 1));
+
+  const handlePrint = () => {
+    const svgEl = svgRef.current?.querySelector("svg");
+    if (!svgEl) return;
+    const svgStr = new XMLSerializer().serializeToString(svgEl);
+    const url = "data:image/svg+xml;charset=utf-8," + encodeURIComponent(svgStr);
+    const win = window.open("","_blank","width=700,height=900");
+    if (!win) return;
+    win.document.write(`<!DOCTYPE html><html><head>
+      <style>@page{size:A4 portrait;margin:0}body{margin:0;background:#fff}img{width:100%;display:block}</style>
+      </head><body><img src="${url}" onload="setTimeout(()=>{window.print();},300)"/></body></html>`);
+    win.document.close();
+  };
+
+  const handleSVG = () => {
+    const svgEl = svgRef.current?.querySelector("svg");
+    if (!svgEl) return;
+    const svgStr = new XMLSerializer().serializeToString(svgEl);
+    const blob = new Blob([svgStr],{type:"image/svg+xml"});
+    const a = document.createElement("a");
+    a.href = URL.createObjectURL(blob);
+    a.download = "blank-fretboard-diagrams.svg";
+    a.click();
+  };
+
+  // Render a single blank fretboard at position (x, y)
+  const renderBlankFretboard = (x, y, idx) => {
+    const fbX = x + marginL;
+    const fbY = y + marginT;
+    const fbBtm = fbY + (strings - 1) * strH;
+    const fbRight = fbX + fretCount * fretW;
+
+    return (
+      <g key={idx}>
+        {/* Nut */}
+        <rect x={fbX - 2} y={fbY} width={4} height={(strings-1)*strH} fill="#555"/>
+
+        {/* Fret lines */}
+        {Array.from({length: fretCount + 1}, (_, fi) => (
+          <line key={fi}
+            x1={fbX + fi*fretW} y1={fbY}
+            x2={fbX + fi*fretW} y2={fbBtm}
+            stroke="#bbb" strokeWidth={0.7}/>
+        ))}
+
+        {/* String lines */}
+        {Array.from({length: strings}, (_, si) => (
+          <line key={si}
+            x1={fbX} y1={fbY + si*strH}
+            x2={fbRight} y2={fbY + si*strH}
+            stroke="#999" strokeWidth={0.6 + si * 0.12}/>
+        ))}
+
+        {/* Fret position markers (3,5,7,9,12) */}
+        {Array.from({length: fretCount}, (_, fi) => {
+          const fret = fi + 1;
+          const cx = fbX + fi*fretW + fretW/2;
+          const midY = fbY + ((strings-1)/2) * strH;
+          if ([3,5,7,9].includes(fret)) {
+            return <circle key={fret} cx={cx} cy={midY} r={3} fill="#ddd"/>;
+          }
+          if (fret === 12) {
+            return (
+              <g key={fret}>
+                <circle cx={cx} cy={midY - strH} r={2.5} fill="#ddd"/>
+                <circle cx={cx} cy={midY + strH} r={2.5} fill="#ddd"/>
+              </g>
+            );
+          }
+          return null;
+        })}
+
+        {/* Fret numbers */}
+        {showFretNums && Array.from({length: fretCount}, (_, fi) => (
+          <text key={fi}
+            x={fbX + fi*fretW + fretW/2} y={fbY - 5}
+            textAnchor="middle" fontSize={7}
+            fontFamily="'JetBrains Mono',monospace" fill="#aaa">
+            {fi + 1}
+          </text>
+        ))}
+
+        {/* String names */}
+        {showStringNames && tuning.slice().reverse().map((note, si) => (
+          <text key={si}
+            x={fbX - 5} y={fbY + si*strH + 3}
+            textAnchor="end" fontSize={7}
+            fontFamily="'JetBrains Mono',monospace" fill="#aaa">
+            {note}
+          </text>
+        ))}
+      </g>
+    );
+  };
+
+  return (
+    <div style={{ background:T.surface, borderRadius:"16px", border:`1px solid ${T.border}`, width:"100%", maxWidth:"700px", maxHeight:"90vh", display:"flex", flexDirection:"column", overflow:"hidden" }}>
+      {/* Header */}
+      <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", padding:"14px 20px", borderBottom:`1px solid ${T.border}`, flexWrap:"wrap", gap:"8px" }}>
+        <span style={{ fontSize:"13px", fontWeight:"700", color:T.textHi }}>Blank Fretboard Sheet</span>
+        <div style={{ display:"flex", gap:"6px", flexWrap:"wrap", alignItems:"center" }}>
+          <input
+            value={sheetTitle}
+            onChange={e => setSheetTitle(e.target.value)}
+            placeholder="Sheet title"
+            style={{ background:T.inputBg, border:`1px solid ${T.border}`, borderRadius:"6px", color:T.textHi, padding:"4px 8px", fontSize:"11px", width:"180px", outline:"none", fontFamily:"Georgia,serif", fontStyle:"italic" }}
+          />
+          <span style={{ fontSize:"11px", color:T.textLo, fontFamily:"'JetBrains Mono',monospace" }}>Diagrams:</span>
+          {[3,4,5,6].map(n => (
+            <MiniBtn key={n} onClick={() => setNumDiagrams(n)} active={numDiagrams===n} T={T}>{n}</MiniBtn>
+          ))}
+          <span style={{ fontSize:"11px", color:T.textLo, fontFamily:"'JetBrains Mono',monospace", marginLeft:"4px" }}>Frets:</span>
+          {[12,15,17].map(n => (
+            <MiniBtn key={n} onClick={() => setFretCount(n)} active={fretCount===n} T={T}>{n}</MiniBtn>
+          ))}
+          <MiniBtn onClick={() => setShowStringNames(s => !s)} active={showStringNames} T={T}>String names</MiniBtn>
+          <MiniBtn onClick={() => setShowFretNums(s => !s)} active={showFretNums} T={T}>Fret nos.</MiniBtn>
+          <button onClick={handleSVG} style={{ padding:"5px 12px", borderRadius:"6px", fontSize:"11px", border:"1.5px solid #06B6D4", background:"#082f49", color:"#22d3ee", cursor:"pointer" }}>Save SVG</button>
+          <button onClick={handlePrint} style={{ padding:"5px 12px", borderRadius:"6px", fontSize:"11px", border:"1.5px solid #22C55E", background:"#052e16", color:"#4ade80", cursor:"pointer", fontWeight:"600" }}>🖨 Print</button>
+          <button onClick={onClose} style={{ padding:"5px 12px", borderRadius:"6px", fontSize:"11px", border:`1.5px solid ${T.border}`, background:"transparent", color:T.textMid, cursor:"pointer" }}>Close</button>
+        </div>
+      </div>
+
+      {/* Preview */}
+      <div style={{ flex:1, overflow:"auto", padding:"24px", background:T.bg, display:"flex", justifyContent:"center" }}>
+        <div ref={svgRef} style={{ background:"#fff", boxShadow:"0 8px 40px rgba(0,0,0,0.4)", borderRadius:"3px", flexShrink:0 }}>
+          <svg xmlns="http://www.w3.org/2000/svg" width={pageW} height={pageH} viewBox={`0 0 ${pageW} ${pageH}`}>
+            <rect width={pageW} height={pageH} fill="#fff"/>
+
+            {/* Title */}
+            <text x={pageW/2} y={pad + 22} textAnchor="middle" fontSize={14}
+              fontFamily="Georgia,serif" fontStyle="italic" fill="#333">
+              {sheetTitle || "Blank Fretboard Diagrams"}
+            </text>
+
+            {/* Diagrams */}
+            {Array.from({length: numDiagrams}, (_, i) => {
+              const y = pad + titleH + i * (diagH + diagGap);
+              return renderBlankFretboard(pad, y, i);
+            })}
+
+            {/* Footer */}
+            <text x={pageW/2} y={pageH - 10} textAnchor="middle" fontSize={8}
+              fontFamily="'JetBrains Mono',monospace" fill="#bbb" letterSpacing="1">
+              {logoText || "unlocktheguitar.net"}
+            </text>
           </svg>
         </div>
       </div>
