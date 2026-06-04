@@ -33,6 +33,7 @@ const SCALES = {
   "Byzantine":            [0,1,4,5,7,8,11],
   "Whole Tone":           [0,2,4,6,8,10],
   "Diminished (HW)":      [0,1,3,4,6,7,9,10],
+  "Diminished (WH)":      [0,2,3,5,6,8,9,11],
   "Lydian b7":            [0,2,4,6,7,9,10],
   "Prometheus":           [0,2,4,6,9,10],
   "Hirajoshi":            [0,2,3,7,8],
@@ -766,11 +767,9 @@ function LayerEditor({ layer, onChange, onRemove, isOnly, T }) {
         <div style={{ padding:"12px", display:"flex", flexDirection:"column", gap:"10px", borderTop:`1px solid ${T.border}` }}>
           <TRow label="TYPE" T={T}>
             <div style={{ display:"flex", gap:"4px", flexWrap:"wrap" }}>
-              {["Scale","Chord","Arpeggio","Custom"].map(t => (
+              {["Scale","Chord","Arpeggio"].map(t => (
                 <TPill key={t} active={layer.type===t} color={ic} T={T}
-                  onClick={() => t==="Custom"
-                    ? onChange({...layer,type:"Custom",intervals:[],customDots:layer.customDots||[]})
-                    : handleTypeChange(t)
+                  onClick={() => handleTypeChange(t)
                   }>{t}</TPill>
               ))}
             </div>
