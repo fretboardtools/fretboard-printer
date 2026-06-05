@@ -1516,7 +1516,7 @@ export default function FretboardPrinter() {
                 cursor:"pointer",display:"flex",alignItems:"center",gap:"8px",marginBottom:"10px",
               }}>📄 Print Blank Fretboard Sheet</button>
               <p style={{ fontSize:"12px",color:T.textLo,lineHeight:"1.6" }}>
-                Prints 5 blank fretboard diagrams per page — ready to fill in by hand. Includes fret markers and unlocktheguitar.net branding.
+                Prints 5 blank fretboard diagrams per page — ready to fill in by hand. Includes fret markers.
               </p>
             </div>
           )}
