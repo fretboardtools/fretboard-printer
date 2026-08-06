@@ -1564,7 +1564,7 @@ function MultiBoardModal({ boards, logoText, onClose, T }) {
   const pageH = 1122;
   const pad   = 32;
   const cellW = pageW - pad*2;
-  const cellH = 220; // fixed height per diagram — never stretches
+  const cellH = 280; // matches approx main fretboard height
   const rows  = boards.length;
 
   const handlePrint = () => {
@@ -1635,9 +1635,9 @@ function MultiBoardModal({ boards, logoText, onClose, T }) {
               const row = Math.floor(i / cols);
               const cx = pad + col * cellW;
               const cy = pad + row * cellH;
-              const ip = 10; // inner cell padding
-              const ML = 28; // print margin left (string labels)
-              const MT = 16; // print margin top (fret numbers)
+              const ip = 10;
+              const ML = 28;
+              const MT = 16;
               const MR = 8;
               const MB = 8;
               const titleH = b.title ? 18 : 0;
@@ -1646,8 +1646,9 @@ function MultiBoardModal({ boards, logoText, onClose, T }) {
               const fbAvailH = cellH - ip*2 - titleH - notesH - MT - MB;
               const fretCount = b.fretEnd - b.fretStart + 1;
               const strings = b.tuning.length;
-              const fretW = Math.max(12, Math.floor(fbAvailW / fretCount));
-              const strH  = Math.max(10, Math.floor(fbAvailH / Math.max(strings-1, 1)));
+              // Fill available width — same approach as main fretboard
+              const fretW = Math.floor(fbAvailW / fretCount);
+              const strH  = Math.floor(fbAvailH / Math.max(strings-1, 1));
               const fbX   = cx + ip + ML;
               const fbY   = cy + ip + titleH + MT;
               const fbBtm = fbY + (strings-1)*strH;
