@@ -573,26 +573,26 @@ const THEMES = {
     badge:     "#451a03",
   },
   light: {
-    bg:        "#f0f2f6",
+    bg:        "#ffffff",
     surface:   "#ffffff",
-    surface2:  "#f7f8fa",
-    surface3:  "#edf0f5",
-    border:    "#dde3ee",
-    border2:   "#c8d0e0",
-    text:      "#1a2030",
-    textHi:    "#0a0c14",
-    textMid:   "#3d4e68",
-    textLo:    "#6b7a90",
-    textMute:  "#99aabb",
-    accent:    "#b8930a",
+    surface2:  "#f8f8f6",
+    surface3:  "#f2f2ef",
+    border:    "#e8e8e4",
+    border2:   "#d4d4ce",
+    text:      "#1a1a18",
+    textHi:    "#000000",
+    textMid:   "#3a3a36",
+    textLo:    "#6b6b65",
+    textMute:  "#9a9a94",
+    accent:    "#1a1a18",
     fbBg:      "#ffffff",
-    fbBorder:  "#dde3ee",
-    inputBg:   "#f7f8fa",
-    selBg:     "#f7f8fa",
-    scrollBg:  "#f0f2f6",
-    scrollTh:  "#c8d0e0",
+    fbBorder:  "#e8e8e4",
+    inputBg:   "#f8f8f6",
+    selBg:     "#f8f8f6",
+    scrollBg:  "#f2f2ef",
+    scrollTh:  "#d4d4ce",
     selOptBg:  "#ffffff",
-    badge:     "#fef3c7",
+    badge:     "#f2f2ef",
   },
 };
 
@@ -1103,7 +1103,7 @@ export default function FretboardPrinter() {
       transition:"background 0.2s, color 0.2s",
     }}>
       <style>{`
-        @import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@400;600;700&family=Playfair+Display:ital,wght@1,400;1,600&display=swap');
+        @import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;600;700&display=swap');
         * { box-sizing:border-box; }
         button,select,input { font-family:inherit; }
         ::-webkit-scrollbar { width:5px; height:5px; background:${T.scrollBg}; }
@@ -1134,19 +1134,21 @@ export default function FretboardPrinter() {
         gap:"10px", minHeight:"52px", flexShrink:0, flexWrap:"wrap",
       }}>
         <span className="topbar-title" style={{
-          fontFamily:"'Playfair Display',serif", fontStyle:"italic",
-          fontSize:"20px", color:T.accent, letterSpacing:"-0.3px", whiteSpace:"nowrap",
+          fontFamily:"'DM Sans',sans-serif", fontWeight:"800",
+          fontSize:"18px", color:T.textHi, letterSpacing:"-0.5px", whiteSpace:"nowrap",
+          textTransform:"uppercase",
         }}>Fretboard Printer</span>
         <span className="topbar-badge" style={{
           fontFamily:"'JetBrains Mono',monospace", fontSize:"9px",
-          color:"#F59E0B", background:T.badge,
-          padding:"2px 6px", borderRadius:"4px", letterSpacing:"1px",
+          color:T.textLo, background:T.surface2,
+          padding:"2px 6px", borderRadius:"2px", letterSpacing:"1px",
+          border:`1px solid ${T.border}`,
         }}>UNLOCK THE GUITAR</span>
         <div style={{ flex:1 }}/>
         {/* Dark/light toggle */}
         <button onClick={()=>setIsDark(d=>!d)} style={{
-          padding:"6px 12px", borderRadius:"20px",
-          border:`1.5px solid ${T.border}`, background:T.surface2, color:T.textMid,
+          padding:"6px 12px", borderRadius:"4px",
+          border:`1px solid ${T.border}`, background:T.surface2, color:T.textMid,
           fontSize:"12px", display:"flex", alignItems:"center", gap:"5px",
           cursor:"pointer", whiteSpace:"nowrap",
         }}>
@@ -1154,9 +1156,10 @@ export default function FretboardPrinter() {
           <span style={{ fontSize:"10px", fontFamily:"'JetBrains Mono',monospace" }}>{isDark?"Light":"Dark"}</span>
         </button>
         <button className="topbar-print" onClick={()=>setShowPrint(true)} style={{
-          padding:"7px 18px", borderRadius:"8px", fontSize:"13px", fontWeight:"700",
-          border:"1.5px solid #22C55E", background:"#052e16",
-          color:"#4ade80", cursor:"pointer", display:"flex", alignItems:"center", gap:"6px", whiteSpace:"nowrap",
+          padding:"7px 18px", borderRadius:"4px", fontSize:"12px", fontWeight:"700",
+          border:`1px solid ${T.textHi}`, background:T.textHi,
+          color:T.surface, cursor:"pointer", display:"flex", alignItems:"center", gap:"6px", whiteSpace:"nowrap",
+          letterSpacing:"0.3px",
         }}>🖨 <span>Print / Export</span></button>
       </div>
 
@@ -1171,8 +1174,8 @@ export default function FretboardPrinter() {
         <div style={{ width:"100%", maxWidth:"960px", marginBottom:"12px" }}>
           {title && (
             <div style={{
-              fontFamily:"'Playfair Display',serif", fontStyle:"italic",
-              fontSize:"clamp(18px,2.5vw,28px)", color:T.accent,
+              fontFamily:"'DM Sans',sans-serif", fontWeight:"700",
+              fontSize:"clamp(16px,2.5vw,22px)", color:T.textHi,
               letterSpacing:"-0.3px", marginBottom:"3px",
             }}>{title}</div>
           )}
@@ -1231,10 +1234,11 @@ export default function FretboardPrinter() {
           {CTRL_TABS.map((tab, i) => (
             <button key={tab} className="tab-label" onClick={()=>setActiveTab(i)} style={{
               padding:"10px 14px", background:"none", border:"none",
-              borderBottom: activeTab===i ? "2px solid #F59E0B" : "2px solid transparent",
-              color: activeTab===i ? "#F59E0B" : T.textLo,
-              fontSize:"12px", fontWeight: activeTab===i?"700":"500",
+              borderBottom: activeTab===i ? `2px solid ${T.textHi}` : "2px solid transparent",
+              color: activeTab===i ? T.textHi : T.textLo,
+              fontSize:"12px", fontWeight: activeTab===i?"700":"400",
               cursor:"pointer", transition:"all 0.1s", whiteSpace:"nowrap", flexShrink:0,
+              letterSpacing:"0.2px",
             }}>{tab}</button>
           ))}
         </div>
