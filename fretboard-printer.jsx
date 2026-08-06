@@ -33,6 +33,7 @@ const SCALES = {
   "Byzantine":            [0,1,4,5,7,8,11],
   "Whole Tone":           [0,2,4,6,8,10],
   "Diminished (HW)":      [0,1,3,4,6,7,9,10],
+  "Diminished (WH)":      [0,2,3,5,6,8,9,11],
   "Lydian b7":            [0,2,4,6,7,9,10],
   "Prometheus":           [0,2,4,6,9,10],
   "Hirajoshi":            [0,2,3,7,8],
@@ -255,11 +256,7 @@ function FretboardSVG({
       {/* Background */}
       <rect width={svgW} height={svgH} fill={bwMode ? "#fff" : isDark ? "#1a1f2e" : "#f8f9fc"}/>
 
-      {/* Nut */}
-      {fretStart === 0 && (
-        <rect x={MARGIN_L-2} y={MARGIN_T} width={5}
-          height={(strings-1)*STRING_H} fill={bwMode?"#000":isDark?"#8899aa":"#5a6880"}/>
-      )}
+      {/* Nut — shown when starting at fret 1 */}
       {fretStart === 1 && (
         <rect x={MARGIN_L-2} y={MARGIN_T} width={4}
           height={(strings-1)*STRING_H} fill={bwMode?"#000":isDark?"#8899aa":"#5a6880"}/>
@@ -319,7 +316,7 @@ function FretboardSVG({
             fontFamily="'JetBrains Mono',monospace"
             fill={bwMode?"#000":isDark?"#5a7090":"#8899aa"}
             fontWeight={[3,5,7,9,12].includes(fret)?"700":"400"}>
-            {fret === 0 ? "O" : fret}
+            {fret}
           </text>
         );
       })}
@@ -451,8 +448,8 @@ function PrintPageSVG({
       )}
 
       {/* Nut */}
-      {fretStart <= 1 && (
-        <rect x={fbX+MARGIN_L-2} y={fbY+MARGIN_T} width={fretStart===0?5:4}
+      {fretStart === 1 && (
+        <rect x={fbX+MARGIN_L-2} y={fbY+MARGIN_T} width={4}
           height={(strings-1)*stringH} fill="#333"/>
       )}
 
@@ -501,7 +498,7 @@ function PrintPageSVG({
           textAnchor="middle" fontSize={10}
           fontFamily="'JetBrains Mono',monospace"
           fill="#888" fontWeight={[3,5,7,9,12].includes(fret)?"700":"400"}>
-          {fret===0?"O":fret}
+          {fret}
         </text>;
       })}
 
@@ -598,6 +595,128 @@ const THEMES = {
   },
 };
 
+// ─── Custom Intervals Editor ──────────────────────────────────────────────────
+// Lets the user enter a root note + intervals (by semitone or note name)
+// e.g. "0,2,4,5,7,9,11" or "C,D,E,F,G,A,B"
+
+function CustomIntervalsEditor({ layer, onChange, T, ic }) {
+  const [inputVal, setInputVal] = useState(
+    layer.customInput || ""
+  );
+  const [error, setError] = useState("");
+
+  // Parse the input — accepts semitone numbers OR note names
+  const parseInput = (raw) => {
+    const parts = raw.split(/[\s,]+/).map(s => s.trim()).filter(Boolean);
+    if (!parts.length) return null;
+
+    // Try semitone numbers first: 0,2,4,5,7,9,11
+    if (parts.every(p => /^\d+$/.test(p))) {
+      const semis = parts.map(Number).filter(n => n >= 0 && n <= 11);
+      return [...new Set(semis)].sort((a,b) => a-b);
+    }
+
+    // Try note names: C,D,Eb,F#,G,A,Bb
+    const noteMap = {"C":0,"C#":1,"Db":1,"D":2,"D#":3,"Eb":3,"E":4,"F":5,
+                     "F#":6,"Gb":6,"G":7,"G#":8,"Ab":8,"A":9,"A#":10,"Bb":10,"B":11};
+    if (parts.every(p => noteMap[p] !== undefined)) {
+      // Convert to intervals relative to first note (root)
+      const root = noteMap[parts[0]];
+      const semis = parts.map(p => (noteMap[p] - root + 12) % 12);
+      return [...new Set(semis)].sort((a,b) => a-b);
+    }
+
+    return null;
+  };
+
+  const handleApply = (raw) => {
+    const semis = parseInput(raw);
+    if (semis === null || semis.length < 2) {
+      setError("Enter 2+ semitone numbers (0–11) or note names separated by commas");
+      return;
+    }
+    setError("");
+    onChange({ ...layer, intervals: semis, customInput: raw });
+  };
+
+  return (
+    <div style={{ display:"flex", flexDirection:"column", gap:"10px" }}>
+
+      {/* Root */}
+      <TRow label="ROOT NOTE" T={T}>
+        <div style={{ display:"flex", flexWrap:"wrap", gap:"3px" }}>
+          {NOTES.map(n => (
+            <TPill key={n} active={layer.root===n} color={ic} T={T} mono
+              onClick={() => onChange({ ...layer, root:n })}>{n}</TPill>
+          ))}
+        </div>
+      </TRow>
+
+      {/* Interval input */}
+      <TRow label="INTERVALS OR NOTES" T={T}>
+        <div style={{ display:"flex", flexDirection:"column", gap:"6px" }}>
+          <input
+            value={inputVal}
+            onChange={e => setInputVal(e.target.value)}
+            onKeyDown={e => e.key === "Enter" && handleApply(inputVal)}
+            placeholder="e.g. 0,2,4,5,7,9,11  or  C,D,E,F,G,A,B"
+            style={{
+              background:T.inputBg, border:`1px solid ${error ? "#ef4444" : T.border}`,
+              borderRadius:"6px", color:T.textHi, padding:"7px 10px",
+              fontSize:"12px", width:"100%", outline:"none",
+              fontFamily:"'JetBrains Mono',monospace",
+            }}
+          />
+          {error && <div style={{ fontSize:"10px", color:"#ef4444" }}>{error}</div>}
+          <div style={{ fontSize:"10px", color:T.textMute, lineHeight:"1.6" }}>
+            Semitones: <span style={{ color:ic }}>0=R, 1=b2, 2=2, 3=b3, 4=3, 5=4, 6=b5, 7=5, 8=b6, 9=6, 10=b7, 11=maj7</span>
+          </div>
+          <button onClick={() => handleApply(inputVal)} style={{
+            padding:"6px 14px", borderRadius:"7px", fontSize:"12px", fontWeight:"700",
+            border:`1.5px solid ${ic}`, background:`${ic}20`,
+            color:ic, cursor:"pointer", alignSelf:"flex-start",
+          }}>Apply →</button>
+        </div>
+      </TRow>
+
+      {/* Show current intervals if set */}
+      {layer.intervals && layer.intervals.length > 0 && (
+        <TRow label="CURRENT INTERVALS" T={T}>
+          <div style={{ display:"flex", flexWrap:"wrap", gap:"4px" }}>
+            {layer.intervals.map(s => (
+              <span key={s} style={{
+                padding:"3px 8px", borderRadius:"5px", fontSize:"11px",
+                background:`${ic}15`, color:ic, border:`1px solid ${ic}44`,
+                fontFamily:"'JetBrains Mono',monospace", fontWeight:"700",
+              }}>{INTERVAL_NAMES[s] || s}</span>
+            ))}
+          </div>
+        </TRow>
+      )}
+
+      {/* Quick interval presets */}
+      <TRow label="QUICK LOAD" T={T}>
+        <div style={{ display:"flex", flexWrap:"wrap", gap:"4px" }}>
+          {[
+            ["Major", "0,2,4,5,7,9,11"],
+            ["Minor", "0,2,3,5,7,8,10"],
+            ["Penta", "0,3,5,7,10"],
+            ["Blues", "0,3,5,6,7,10"],
+            ["Dom7", "0,4,7,10"],
+            ["Maj7", "0,4,7,11"],
+          ].map(([label, val]) => (
+            <button key={label} onClick={() => { setInputVal(val); handleApply(val); }} style={{
+              padding:"4px 9px", borderRadius:"5px", fontSize:"11px",
+              border:`1px solid ${T.border}`, background:T.surface2,
+              color:T.textLo, cursor:"pointer",
+            }}>{label}</button>
+          ))}
+        </div>
+      </TRow>
+    </div>
+  );
+}
+
 // ─── Layer Editor ─────────────────────────────────────────────────────────────
 
 function LayerEditor({ layer, onChange, onRemove, isOnly, T }) {
@@ -648,11 +767,9 @@ function LayerEditor({ layer, onChange, onRemove, isOnly, T }) {
         <div style={{ padding:"12px", display:"flex", flexDirection:"column", gap:"10px", borderTop:`1px solid ${T.border}` }}>
           <TRow label="TYPE" T={T}>
             <div style={{ display:"flex", gap:"4px", flexWrap:"wrap" }}>
-              {["Scale","Chord","Arpeggio","Custom"].map(t => (
+              {["Scale","Chord","Arpeggio"].map(t => (
                 <TPill key={t} active={layer.type===t} color={ic} T={T}
-                  onClick={() => t==="Custom"
-                    ? onChange({...layer,type:"Custom",intervals:[],customDots:layer.customDots||[]})
-                    : handleTypeChange(t)
+                  onClick={() => handleTypeChange(t)
                   }>{t}</TPill>
               ))}
             </div>
@@ -677,6 +794,10 @@ function LayerEditor({ layer, onChange, onRemove, isOnly, T }) {
               </select>
             </TRow>
           </>}
+
+          {layer.type === "Custom" && (
+            <CustomIntervalsEditor layer={layer} onChange={onChange} T={T} ic={ic}/>
+          )}
 
           <TRow label="LABELS" T={T}>
             <div style={{ display:"flex", gap:"4px", flexWrap:"wrap" }}>
@@ -842,20 +963,20 @@ function PrintModalInner({ settings, tuning, fretStart, fretEnd, dots, onClose, 
 // ─── Built-in presets ─────────────────────────────────────────────────────────
 
 const BUILT_IN_PRESETS = [
-  { name:"A Minor Pentatonic — Full Neck",   guitarType:"6-string", tuningPreset:"Standard (EADGBe)", fretStart:0, fretEnd:12, title:"A Minor Pentatonic", subtitle:"Full neck overview", layers:[{ type:"Scale", root:"A", name:"Minor Pentatonic", labelMode:"interval", shape:"circle", size:"medium", color:"#E85D3A" }] },
-  { name:"A Blues Scale — Full Neck",        guitarType:"6-string", tuningPreset:"Standard (EADGBe)", fretStart:0, fretEnd:12, title:"A Blues Scale",       subtitle:"", layers:[{ type:"Scale", root:"A", name:"Blues", labelMode:"interval", shape:"circle", size:"medium", color:"#3A8FE8" }] },
-  { name:"A Minor Penta — Open Box (0–4)",   guitarType:"6-string", tuningPreset:"Standard (EADGBe)", fretStart:0, fretEnd:4,  title:"A Minor Pentatonic — Position 1", subtitle:"Open position box", layers:[{ type:"Scale", root:"A", name:"Minor Pentatonic", labelMode:"interval", shape:"circle", size:"medium", color:"#E85D3A" }] },
+  { name:"A Minor Pentatonic — Full Neck",   guitarType:"6-string", tuningPreset:"Standard (EADGBe)", fretStart:1, fretEnd:12, title:"A Minor Pentatonic", subtitle:"Full neck overview", layers:[{ type:"Scale", root:"A", name:"Minor Pentatonic", labelMode:"interval", shape:"circle", size:"medium", color:"#E85D3A" }] },
+  { name:"A Blues Scale — Full Neck",        guitarType:"6-string", tuningPreset:"Standard (EADGBe)", fretStart:1, fretEnd:12, title:"A Blues Scale",       subtitle:"", layers:[{ type:"Scale", root:"A", name:"Blues", labelMode:"interval", shape:"circle", size:"medium", color:"#3A8FE8" }] },
+  { name:"A Minor Penta — Frets 1–4",   guitarType:"6-string", tuningPreset:"Standard (EADGBe)", fretStart:1, fretEnd:4,  title:"A Minor Pentatonic — Position 1", subtitle:"1st position box", layers:[{ type:"Scale", root:"A", name:"Minor Pentatonic", labelMode:"interval", shape:"circle", size:"medium", color:"#E85D3A" }] },
   { name:"A Minor Penta — Box 2 (5–9)",      guitarType:"6-string", tuningPreset:"Standard (EADGBe)", fretStart:5, fretEnd:9,  title:"A Minor Pentatonic — Position 2", subtitle:"5th position box", layers:[{ type:"Scale", root:"A", name:"Minor Pentatonic", labelMode:"interval", shape:"circle", size:"medium", color:"#E85D3A" }] },
   { name:"A Minor Penta — Box 3 (7–11)",     guitarType:"6-string", tuningPreset:"Standard (EADGBe)", fretStart:7, fretEnd:11, title:"A Minor Pentatonic — Position 3", subtitle:"7th position box", layers:[{ type:"Scale", root:"A", name:"Minor Pentatonic", labelMode:"interval", shape:"circle", size:"medium", color:"#E85D3A" }] },
-  { name:"A Natural Minor — Full Neck",      guitarType:"6-string", tuningPreset:"Standard (EADGBe)", fretStart:0, fretEnd:12, title:"A Natural Minor",    subtitle:"Aeolian mode", layers:[{ type:"Scale", root:"A", name:"Natural Minor", labelMode:"note", shape:"circle", size:"medium", color:"#9B59B6" }] },
-  { name:"A Major Scale — Full Neck",        guitarType:"6-string", tuningPreset:"Standard (EADGBe)", fretStart:0, fretEnd:12, title:"A Major Scale",      subtitle:"", layers:[{ type:"Scale", root:"A", name:"Major", labelMode:"note", shape:"circle", size:"medium", color:"#2ECC71" }] },
-  { name:"A Dorian — Full Neck",             guitarType:"6-string", tuningPreset:"Standard (EADGBe)", fretStart:0, fretEnd:12, title:"A Dorian",           subtitle:"Mode II — minor with natural 6th", layers:[{ type:"Scale", root:"A", name:"Dorian", labelMode:"interval", shape:"circle", size:"medium", color:"#1ABC9C" }] },
-  { name:"A Mixolydian — Full Neck",         guitarType:"6-string", tuningPreset:"Standard (EADGBe)", fretStart:0, fretEnd:12, title:"A Mixolydian",       subtitle:"Mode V — major with b7", layers:[{ type:"Scale", root:"A", name:"Mixolydian", labelMode:"interval", shape:"circle", size:"medium", color:"#F0A500" }] },
-  { name:"Am7 Arpeggio — Full Neck",         guitarType:"6-string", tuningPreset:"Standard (EADGBe)", fretStart:0, fretEnd:12, title:"Am7 Arpeggio",       subtitle:"R · b3 · 5 · b7", layers:[{ type:"Arpeggio", root:"A", name:"Min7", labelMode:"interval", shape:"diamond", size:"medium", color:"#6366F1" }] },
-  { name:"A7 Arpeggio — Full Neck",          guitarType:"6-string", tuningPreset:"Standard (EADGBe)", fretStart:0, fretEnd:12, title:"A7 Arpeggio",        subtitle:"R · 3 · 5 · b7", layers:[{ type:"Arpeggio", root:"A", name:"Dom7", labelMode:"interval", shape:"diamond", size:"medium", color:"#EF4444" }] },
-  { name:"Penta + Blues Note overlay",       guitarType:"6-string", tuningPreset:"Standard (EADGBe)", fretStart:0, fretEnd:12, title:"Pentatonic + Blue Note", subtitle:"Pentatonic shell with added b5", layers:[{ type:"Scale", root:"A", name:"Minor Pentatonic", labelMode:"interval", shape:"circle", size:"medium", color:"#E85D3A" },{ type:"Scale", root:"A", name:"Blues", labelMode:"interval", shape:"circle", size:"small", color:"#2ECC71" }] },
-  { name:"Am Chord — Full Neck",             guitarType:"6-string", tuningPreset:"Standard (EADGBe)", fretStart:0, fretEnd:12, title:"Am Chord Tones",     subtitle:"R · b3 · 5 — all positions", layers:[{ type:"Chord", root:"A", name:"Minor (triad)", labelMode:"interval", shape:"square", size:"medium", color:"#6366F1" }] },
-  { name:"A Dom7 Chord — Full Neck",         guitarType:"6-string", tuningPreset:"Standard (EADGBe)", fretStart:0, fretEnd:12, title:"A7 Chord Tones",     subtitle:"R · 3 · 5 · b7 — all positions", layers:[{ type:"Chord", root:"A", name:"Dominant 7", labelMode:"interval", shape:"square", size:"medium", color:"#EF4444" }] },
+  { name:"A Natural Minor — Full Neck",      guitarType:"6-string", tuningPreset:"Standard (EADGBe)", fretStart:1, fretEnd:12, title:"A Natural Minor",    subtitle:"Aeolian mode", layers:[{ type:"Scale", root:"A", name:"Natural Minor", labelMode:"note", shape:"circle", size:"medium", color:"#9B59B6" }] },
+  { name:"A Major Scale — Full Neck",        guitarType:"6-string", tuningPreset:"Standard (EADGBe)", fretStart:1, fretEnd:12, title:"A Major Scale",      subtitle:"", layers:[{ type:"Scale", root:"A", name:"Major", labelMode:"note", shape:"circle", size:"medium", color:"#2ECC71" }] },
+  { name:"A Dorian — Full Neck",             guitarType:"6-string", tuningPreset:"Standard (EADGBe)", fretStart:1, fretEnd:12, title:"A Dorian",           subtitle:"Mode II — minor with natural 6th", layers:[{ type:"Scale", root:"A", name:"Dorian", labelMode:"interval", shape:"circle", size:"medium", color:"#1ABC9C" }] },
+  { name:"A Mixolydian — Full Neck",         guitarType:"6-string", tuningPreset:"Standard (EADGBe)", fretStart:1, fretEnd:12, title:"A Mixolydian",       subtitle:"Mode V — major with b7", layers:[{ type:"Scale", root:"A", name:"Mixolydian", labelMode:"interval", shape:"circle", size:"medium", color:"#F0A500" }] },
+  { name:"Am7 Arpeggio — Full Neck",         guitarType:"6-string", tuningPreset:"Standard (EADGBe)", fretStart:1, fretEnd:12, title:"Am7 Arpeggio",       subtitle:"R · b3 · 5 · b7", layers:[{ type:"Arpeggio", root:"A", name:"Min7", labelMode:"interval", shape:"diamond", size:"medium", color:"#6366F1" }] },
+  { name:"A7 Arpeggio — Full Neck",          guitarType:"6-string", tuningPreset:"Standard (EADGBe)", fretStart:1, fretEnd:12, title:"A7 Arpeggio",        subtitle:"R · 3 · 5 · b7", layers:[{ type:"Arpeggio", root:"A", name:"Dom7", labelMode:"interval", shape:"diamond", size:"medium", color:"#EF4444" }] },
+  { name:"Penta + Blues Note overlay",       guitarType:"6-string", tuningPreset:"Standard (EADGBe)", fretStart:1, fretEnd:12, title:"Pentatonic + Blue Note", subtitle:"Pentatonic shell with added b5", layers:[{ type:"Scale", root:"A", name:"Minor Pentatonic", labelMode:"interval", shape:"circle", size:"medium", color:"#E85D3A" },{ type:"Scale", root:"A", name:"Blues", labelMode:"interval", shape:"circle", size:"small", color:"#2ECC71" }] },
+  { name:"Am Chord — Full Neck",             guitarType:"6-string", tuningPreset:"Standard (EADGBe)", fretStart:1, fretEnd:12, title:"Am Chord Tones",     subtitle:"R · b3 · 5 — all positions", layers:[{ type:"Chord", root:"A", name:"Minor (triad)", labelMode:"interval", shape:"square", size:"medium", color:"#6366F1" }] },
+  { name:"A Dom7 Chord — Full Neck",         guitarType:"6-string", tuningPreset:"Standard (EADGBe)", fretStart:1, fretEnd:12, title:"A7 Chord Tones",     subtitle:"R · 3 · 5 · b7 — all positions", layers:[{ type:"Chord", root:"A", name:"Dominant 7", labelMode:"interval", shape:"square", size:"medium", color:"#EF4444" }] },
 ];
 
 let layerIdCounter = 1;
@@ -889,7 +1010,7 @@ export default function FretboardPrinter() {
   const [guitarType,      setGuitarType]       = useState("6-string");
   const [customTuning,    setCustomTuning]     = useState([...DEFAULT_TUNING]);
   const [useCustomTuning, setUseCustomTuning]  = useState(false);
-  const [fretStart,       setFretStart]        = useState(0);
+  const [fretStart,       setFretStart]        = useState(1);
   const [fretEnd,         setFretEnd]          = useState(12);
   const [showFretNums,    setShowFretNums]      = useState(true);
   const [showStringNames, setShowStringNames]   = useState(true);
@@ -898,13 +1019,15 @@ export default function FretboardPrinter() {
   const [logoText,        setLogoText]         = useState("unlocktheguitar.net");
   const [showPrint,       setShowPrint]        = useState(false);
   const [activeTab,       setActiveTab]        = useState(0);
-  const [isDark,          setIsDark]           = useState(true);
+  const [isDark,          setIsDark]           = useState(false);
   // Presets
   const [savedPresets,    setSavedPresets]     = useState([]);
   const [savePresetName,  setSavePresetName]   = useState("");
   // Multi-board
   const [multiBoards,     setMultiBoards]      = useState([]);
   const [showMultiPrint,  setShowMultiPrint]   = useState(false);
+  // Blank sheet
+  const [showBlankSheet,  setShowBlankSheet]   = useState(false);
 
   const T = isDark ? THEMES.dark : THEMES.light;
 
@@ -986,19 +1109,34 @@ export default function FretboardPrinter() {
         ::-webkit-scrollbar-thumb { background:${T.scrollTh}; border-radius:3px; }
         select option { background:${T.selOptBg}; color:${T.textHi}; }
         @keyframes fadeIn { from{opacity:0;transform:translateY(5px)} to{opacity:1;transform:translateY(0)} }
+
+        /* ── Mobile ── */
+        @media (max-width: 600px) {
+          .topbar-badge { display:none !important; }
+          .topbar-title { font-size:17px !important; }
+          .topbar-print span:last-child { display:none !important; }
+          .topbar-print { padding:7px 10px !important; }
+          .tab-label { font-size:10px !important; padding:8px 10px !important; }
+          .diagram-area { padding:12px 10px 10px !important; }
+          .controls-area { padding:14px 14px !important; }
+          .layer-grid { grid-template-columns:1fr !important; }
+        }
+        @media (max-width: 400px) {
+          .tab-label { font-size:9px !important; padding:7px 7px !important; }
+        }
       `}</style>
 
       {/* ── Top bar ── */}
       <div style={{
         background:T.surface, borderBottom:`1px solid ${T.border}`,
-        padding:"0 20px", display:"flex", alignItems:"center",
-        gap:"12px", height:"52px", flexShrink:0,
+        padding:"0 16px", display:"flex", alignItems:"center",
+        gap:"10px", minHeight:"52px", flexShrink:0, flexWrap:"wrap",
       }}>
-        <span style={{
+        <span className="topbar-title" style={{
           fontFamily:"'Playfair Display',serif", fontStyle:"italic",
           fontSize:"20px", color:T.accent, letterSpacing:"-0.3px", whiteSpace:"nowrap",
         }}>Fretboard Printer</span>
-        <span style={{
+        <span className="topbar-badge" style={{
           fontFamily:"'JetBrains Mono',monospace", fontSize:"9px",
           color:"#F59E0B", background:T.badge,
           padding:"2px 6px", borderRadius:"4px", letterSpacing:"1px",
@@ -1014,15 +1152,15 @@ export default function FretboardPrinter() {
           <span style={{ fontSize:"14px" }}>{isDark?"☀️":"🌙"}</span>
           <span style={{ fontSize:"10px", fontFamily:"'JetBrains Mono',monospace" }}>{isDark?"Light":"Dark"}</span>
         </button>
-        <button onClick={()=>setShowPrint(true)} style={{
+        <button className="topbar-print" onClick={()=>setShowPrint(true)} style={{
           padding:"7px 18px", borderRadius:"8px", fontSize:"13px", fontWeight:"700",
           border:"1.5px solid #22C55E", background:"#052e16",
           color:"#4ade80", cursor:"pointer", display:"flex", alignItems:"center", gap:"6px", whiteSpace:"nowrap",
-        }}>🖨 Print / Export</button>
+        }}>🖨 <span>Print / Export</span></button>
       </div>
 
       {/* ── Diagram area ── */}
-      <div style={{
+      <div className="diagram-area" style={{
         background:T.fbBg,
         borderBottom:`1px solid ${T.border}`,
         padding:"24px 24px 16px",
@@ -1086,21 +1224,22 @@ export default function FretboardPrinter() {
         {/* Tab bar */}
         <div style={{
           background:T.surface, borderBottom:`1px solid ${T.border}`,
-          display:"flex", gap:0, padding:"0 16px", flexShrink:0,
+          display:"flex", gap:0, padding:"0 8px", flexShrink:0,
+          overflowX:"auto",
         }}>
           {CTRL_TABS.map((tab, i) => (
-            <button key={tab} onClick={()=>setActiveTab(i)} style={{
-              padding:"10px 18px", background:"none", border:"none",
+            <button key={tab} className="tab-label" onClick={()=>setActiveTab(i)} style={{
+              padding:"10px 14px", background:"none", border:"none",
               borderBottom: activeTab===i ? "2px solid #F59E0B" : "2px solid transparent",
               color: activeTab===i ? "#F59E0B" : T.textLo,
               fontSize:"12px", fontWeight: activeTab===i?"700":"500",
-              cursor:"pointer", transition:"all 0.1s", whiteSpace:"nowrap",
+              cursor:"pointer", transition:"all 0.1s", whiteSpace:"nowrap", flexShrink:0,
             }}>{tab}</button>
           ))}
         </div>
 
         {/* Tab content */}
-        <div style={{ flex:1, overflowY:"auto", padding:"20px 24px", background:T.bg }}>
+        <div className="controls-area" style={{ flex:1, overflowY:"auto", padding:"20px 24px", background:T.bg }}>
 
           {/* ── Tab 0: Guitar & Tuning ── */}
           {activeTab===0 && (
@@ -1151,7 +1290,7 @@ export default function FretboardPrinter() {
             <div style={{ maxWidth:"600px", animation:"fadeIn 0.2s ease" }}>
               <SL T={T}>QUICK SELECT</SL>
               <div style={{ display:"flex", flexWrap:"wrap", gap:"6px", marginBottom:"20px" }}>
-                {[[0,12,"Full neck (0–12)"],[0,4,"Open box (0–4)"],[3,7,"Frets 3–7"],[4,8,"Frets 4–8"],[5,9,"Frets 5–9"],[7,12,"Frets 7–12"],[1,5,"Frets 1–5"],[2,6,"Frets 2–6"]].map(([s,e,lbl])=>(
+                {[[1,12,"Full neck (1–12)"],[1,4,"Frets 1–4"],[1,5,"Frets 1–5"],[3,7,"Frets 3–7"],[4,8,"Frets 4–8"],[5,9,"Frets 5–9"],[7,12,"Frets 7–12"],[2,6,"Frets 2–6"]].map(([s,e,lbl])=>(
                   <button key={lbl} onClick={()=>{setFretStart(s);setFretEnd(e);}} style={{
                     padding:"7px 14px", borderRadius:"8px", fontSize:"12px",
                     border: fretStart===s&&fretEnd===e ? "1.5px solid #F59E0B" : `1.5px solid ${T.border}`,
@@ -1167,8 +1306,8 @@ export default function FretboardPrinter() {
                   <span style={{ fontSize:"10px",color:T.textLo,fontFamily:"'JetBrains Mono',monospace" }}>FROM FRET</span>
                   <select value={fretStart} onChange={e=>setFretStart(Number(e.target.value))}
                     style={{ background:T.inputBg,border:`1px solid ${T.border}`,borderRadius:"7px",color:T.textHi,padding:"7px 10px",fontSize:"13px",cursor:"pointer",width:"120px" }}>
-                    {Array.from({length:13},(_,i)=>i).filter(f=>f<fretEnd).map(f=>(
-                      <option key={f} value={f}>{f===0?"Open (0)":f}</option>
+                    {Array.from({length:12},(_,i)=>i+1).filter(f=>f<fretEnd).map(f=>(
+                      <option key={f} value={f}>{f}</option>
                     ))}
                   </select>
                 </div>
@@ -1196,7 +1335,7 @@ export default function FretboardPrinter() {
                 <span style={{ fontSize:"13px",fontWeight:"600",color:T.textHi }}>{layers.length} layer{layers.length!==1?"s":""}</span>
                 <button onClick={addLayer} style={{ padding:"7px 16px",borderRadius:"8px",fontSize:"12px",fontWeight:"700",border:"1.5px solid #22C55E",background:"#052e16",color:"#4ade80",cursor:"pointer" }}>+ Add layer</button>
               </div>
-              <div style={{ display:"grid", gridTemplateColumns:"repeat(auto-fill,minmax(300px,1fr))", gap:"8px" }}>
+              <div className="layer-grid" style={{ display:"grid", gridTemplateColumns:"repeat(auto-fill,minmax(300px,1fr))", gap:"8px" }}>
                 {layers.map(layer=>(
                   <LayerEditor key={layer.id} layer={layer} T={T}
                     onChange={updated=>updateLayer(layer.id,updated)}
@@ -1369,6 +1508,16 @@ export default function FretboardPrinter() {
               <p style={{ fontSize:"12px",color:T.textLo,lineHeight:"1.6" }}>
                 B&W mode, portrait/landscape, practice notes area — then print or save as SVG.
               </p>
+              <div style={{ height:"1px",background:T.border,marginBottom:"20px",marginTop:"10px" }}/>
+              <SL T={T}>BLANK FRETBOARD SHEET</SL>
+              <button onClick={()=>setShowBlankSheet(true)} style={{
+                padding:"12px 28px",borderRadius:"10px",fontSize:"14px",fontWeight:"700",
+                border:"1.5px solid #06B6D4",background:"#082f49",color:"#22d3ee",
+                cursor:"pointer",display:"flex",alignItems:"center",gap:"8px",marginBottom:"10px",
+              }}>📄 Print Blank Fretboard Sheet</button>
+              <p style={{ fontSize:"12px",color:T.textLo,lineHeight:"1.6" }}>
+                Prints 5 blank fretboard diagrams per page — ready to fill in by hand. Includes fret markers.
+              </p>
             </div>
           )}
         </div>
@@ -1387,6 +1536,13 @@ export default function FretboardPrinter() {
           <MultiBoardModal boards={multiBoards} logoText={logoText} onClose={()=>setShowMultiPrint(false)} T={T}/>
         </div>
       )}
+
+      {/* ── Blank sheet modal ── */}
+      {showBlankSheet && (
+        <div style={{ position:"fixed",inset:0,background:"rgba(0,0,0,0.85)",zIndex:1000,display:"flex",alignItems:"center",justifyContent:"center",padding:"20px" }}>
+          <BlankSheetModal tuning={tuning} logoText={logoText} onClose={()=>setShowBlankSheet(false)} T={T}/>
+        </div>
+      )}
     </div>
   );
 }
@@ -1394,16 +1550,20 @@ export default function FretboardPrinter() {
 // ─── Multi-board print modal ──────────────────────────────────────────────────
 
 function MultiBoardModal({ boards, logoText, onClose, T }) {
-  const [bw, setBw] = useState(false);
-  const [cols, setCols] = useState(2);
+  const [bw,        setBw]        = useState(false);
+  const [cols,      setCols]      = useState(2);
   const [notesArea, setNotesArea] = useState(false);
+  const [orient,    setOrient]    = useState("landscape");
   const svgRef = useRef(null);
 
-  const rows = Math.ceil(boards.length / cols);
-  const pageW = 1050; const pageH = 740;
-  const pad = 36;
+  // A4 at 96dpi
+  const page = orient === "landscape" ? { w:1122, h:794 } : { w:794, h:1122 };
+  const pageW = page.w;
+  const pageH = page.h;
+  const pad   = 32;
+  const rows  = Math.ceil(boards.length / cols);
   const cellW = (pageW - pad*2) / cols;
-  const cellH = (pageH - pad*2 - 32) / rows;
+  const cellH = (pageH - pad*2 - 24) / rows;
 
   const handlePrint = () => {
     const svgEl = svgRef.current?.querySelector("svg");
@@ -1413,7 +1573,7 @@ function MultiBoardModal({ boards, logoText, onClose, T }) {
     const win = window.open("","_blank","width=900,height=700");
     if (!win) return;
     win.document.write(`<!DOCTYPE html><html><head>
-      <style>@page{size:A4 landscape;margin:0}body{margin:0;background:#fff}img{max-width:100%;display:block}</style>
+      <style>@page{size:A4 ${orient};margin:0}body{margin:0;background:#fff}img{width:100%;height:100vh;object-fit:contain;display:block}</style>
       </head><body><img src="${url}" onload="setTimeout(()=>{window.print();},300)"/></body></html>`);
     win.document.close();
   };
@@ -1427,7 +1587,7 @@ function MultiBoardModal({ boards, logoText, onClose, T }) {
   };
 
   return (
-    <div style={{ background:T.surface,borderRadius:"16px",border:`1px solid ${T.border}`,width:"100%",maxWidth:"1100px",maxHeight:"90vh",display:"flex",flexDirection:"column",overflow:"hidden" }}>
+    <div style={{ background:T.surface,borderRadius:"16px",border:`1px solid ${T.border}`,width:"100%",maxWidth:"1200px",maxHeight:"90vh",display:"flex",flexDirection:"column",overflow:"hidden" }}>
       <div style={{ display:"flex",alignItems:"center",justifyContent:"space-between",padding:"14px 20px",borderBottom:`1px solid ${T.border}`,flexWrap:"wrap",gap:"8px" }}>
         <span style={{ fontSize:"13px",fontWeight:"700",color:T.textHi }}>Multi-Board — {boards.length} diagram{boards.length!==1?"s":""}</span>
         <div style={{ display:"flex",gap:"6px",flexWrap:"wrap",alignItems:"center" }}>
@@ -1435,6 +1595,9 @@ function MultiBoardModal({ boards, logoText, onClose, T }) {
           {[1,2,3].map(c=>(
             <MiniBtn key={c} onClick={()=>setCols(c)} active={cols===c} T={T}>{c}</MiniBtn>
           ))}
+          <MiniBtn onClick={()=>setOrient(o=>o==="landscape"?"portrait":"landscape")} active={false} T={T}>
+            {orient==="landscape"?"⟺ Landscape":"⟳ Portrait"}
+          </MiniBtn>
           <MiniBtn onClick={()=>setBw(b=>!b)} active={bw} T={T}>B&W</MiniBtn>
           <MiniBtn onClick={()=>setNotesArea(n=>!n)} active={notesArea} T={T}>Notes lines</MiniBtn>
           <button onClick={handleSVG} style={{ padding:"5px 12px",borderRadius:"6px",fontSize:"11px",border:"1.5px solid #06B6D4",background:"#082f49",color:"#22d3ee",cursor:"pointer" }}>Save SVG</button>
@@ -1442,9 +1605,11 @@ function MultiBoardModal({ boards, logoText, onClose, T }) {
           <button onClick={onClose} style={{ padding:"5px 12px",borderRadius:"6px",fontSize:"11px",border:`1.5px solid ${T.border}`,background:"transparent",color:T.textMid,cursor:"pointer" }}>Close</button>
         </div>
       </div>
-      <div style={{ flex:1,overflow:"auto",padding:"24px",background:T.bg,display:"flex",justifyContent:"center" }}>
-        <div ref={svgRef} style={{ background:"#fff",boxShadow:"0 8px 40px rgba(0,0,0,0.4)",borderRadius:"3px",flexShrink:0 }}>
-          <svg xmlns="http://www.w3.org/2000/svg" width={pageW} height={pageH} viewBox={`0 0 ${pageW} ${pageH}`}>
+      <div style={{ flex:1,overflow:"auto",padding:"24px",background:T.bg,display:"flex",justifyContent:"center",alignItems:"flex-start" }}>
+        <div ref={svgRef} style={{ background:"#fff",boxShadow:"0 8px 40px rgba(0,0,0,0.4)",borderRadius:"3px",flexShrink:0,maxWidth:"100%" }}>
+          <svg xmlns="http://www.w3.org/2000/svg" width={pageW} height={pageH}
+            viewBox={`0 0 ${pageW} ${pageH}`}
+            style={{ display:"block", maxWidth:"100%", height:"auto" }}>
             <defs>
               {[0,1,2,3,4].map(i=>(
                 <pattern key={i} id={`mbw${i}`} patternUnits="userSpaceOnUse" width="4" height="4">
@@ -1462,71 +1627,295 @@ function MultiBoardModal({ boards, logoText, onClose, T }) {
               const row = Math.floor(i / cols);
               const cx = pad + col * cellW;
               const cy = pad + row * cellH;
-              const ip = 14;
-              const titleH = b.title ? 22 : 0;
-              const notesH = notesArea ? 40 : 0;
-              const fbAvailH = cellH - ip*2 - titleH - notesH - 8;
-              const fbAvailW = cellW - ip*2;
+              const ip = 12;
+              const titleH = b.title ? 20 : 0;
+              const notesH = notesArea ? 36 : 0;
+              // Available space for fretboard inside cell
+              const fbAvailW = cellW - ip*2 - MARGIN_L - MARGIN_R;
+              const fbAvailH = cellH - ip*2 - titleH - notesH - MARGIN_T - MARGIN_B - 4;
               const fretCount = b.fretEnd - b.fretStart + 1;
               const strings = b.tuning.length;
-              const fretW = Math.max(20, Math.min(46, Math.floor(fbAvailW / fretCount)));
-              const strH  = Math.max(14, Math.min(26, Math.floor(fbAvailH / Math.max(strings,1))));
-              const fbX = cx + ip + Math.max(0,(fbAvailW - (MARGIN_L + fretCount*fretW + MARGIN_R))/2);
-              const fbY = cy + ip + titleH;
+              // Scale to fit cell — clamp to reasonable min/max
+              const fretW = Math.max(14, Math.min(52, Math.floor(fbAvailW / fretCount)));
+              const strH  = Math.max(10, Math.min(32, Math.floor(fbAvailH / Math.max(strings-1, 1))));
+              const fbW   = MARGIN_L + fretCount * fretW + MARGIN_R;
+              const fbX   = cx + ip + Math.max(0, (cellW - ip*2 - fbW) / 2);
+              const fbY   = cy + ip + titleH;
               const fbBtm = fbY + MARGIN_T + (strings-1)*strH;
               const layerIds = [...new Set(b.dots.map(d=>d.layerId))];
               const bwPats = ["url(#mbw0)","url(#mbw1)","url(#mbw2)","url(#mbw3)","url(#mbw4)"];
 
               return (
                 <g key={b.id}>
-                  <rect x={cx+2} y={cy+2} width={cellW-4} height={cellH-4} fill="none" stroke="#e8edf4" strokeWidth={0.6} rx={3}/>
-                  {b.title&&<text x={cx+ip} y={cy+ip+14} fontSize={12} fontFamily="Georgia,serif" fontStyle="italic" fill="#222">{b.title}</text>}
-                  {b.fretStart<=1&&<rect x={fbX+MARGIN_L-2} y={fbY+MARGIN_T} width={b.fretStart===0?5:3} height={(strings-1)*strH} fill="#555"/>}
+                  {/* Cell border */}
+                  <rect x={cx+1} y={cy+1} width={cellW-2} height={cellH-2}
+                    fill="none" stroke="#e0e5ee" strokeWidth={0.5} rx={3}/>
+                  {/* Title */}
+                  {b.title&&<text x={cx+ip} y={cy+ip+13} fontSize={11}
+                    fontFamily="Georgia,serif" fontStyle="italic" fill="#222">{b.title}</text>}
+                  {/* Nut */}
+                  {b.fretStart===1&&<rect x={fbX+MARGIN_L-2} y={fbY+MARGIN_T}
+                    width={3} height={(strings-1)*strH} fill="#555"/>}
+                  {/* Fret lines */}
                   {Array.from({length:fretCount+1},(_,fi)=>(
-                    <line key={fi} x1={fbX+MARGIN_L+fi*fretW} y1={fbY+MARGIN_T} x2={fbX+MARGIN_L+fi*fretW} y2={fbBtm} stroke="#ccc" strokeWidth={0.7}/>
+                    <line key={fi}
+                      x1={fbX+MARGIN_L+fi*fretW} y1={fbY+MARGIN_T}
+                      x2={fbX+MARGIN_L+fi*fretW} y2={fbBtm}
+                      stroke="#ccc" strokeWidth={0.7}/>
                   ))}
+                  {/* String lines */}
                   {Array.from({length:strings},(_,si)=>(
-                    <line key={si} x1={fbX+MARGIN_L} y1={fbY+MARGIN_T+si*strH} x2={fbX+MARGIN_L+fretCount*fretW} y2={fbY+MARGIN_T+si*strH} stroke="#bbb" strokeWidth={0.6+si*0.1}/>
+                    <line key={si}
+                      x1={fbX+MARGIN_L} y1={fbY+MARGIN_T+si*strH}
+                      x2={fbX+MARGIN_L+fretCount*fretW} y2={fbY+MARGIN_T+si*strH}
+                      stroke="#bbb" strokeWidth={0.6+si*0.1}/>
                   ))}
+                  {/* Position markers */}
                   {Array.from({length:fretCount},(_,fi)=>{
                     const fret=b.fretStart+fi;
                     const mcx=fbX+MARGIN_L+fi*fretW+fretW/2;
                     const mcy=fbY+MARGIN_T+((strings-1)/2)*strH;
-                    if([3,5,7,9].includes(fret))return<circle key={fret} cx={mcx} cy={mcy} r={3} fill="#ddd"/>;
-                    if(fret===12)return<g key={fret}><circle cx={mcx} cy={mcy-strH} r={2.5} fill="#ddd"/><circle cx={mcx} cy={mcy+strH} r={2.5} fill="#ddd"/></g>;
+                    const mr=Math.min(3,strH*0.2,fretW*0.2);
+                    if([3,5,7,9].includes(fret))return<circle key={fret} cx={mcx} cy={mcy} r={mr} fill="#ddd"/>;
+                    if(fret===12)return<g key={fret}>
+                      <circle cx={mcx} cy={mcy-strH} r={mr} fill="#ddd"/>
+                      <circle cx={mcx} cy={mcy+strH} r={mr} fill="#ddd"/>
+                    </g>;
                     return null;
                   })}
+                  {/* Fret numbers */}
                   {b.showFretNums&&Array.from({length:fretCount},(_,fi)=>{
                     const fret=b.fretStart+fi;
-                    return<text key={fret} x={fbX+MARGIN_L+fi*fretW+fretW/2} y={fbY+MARGIN_T-5} textAnchor="middle" fontSize={7} fontFamily="'JetBrains Mono',monospace" fill="#aaa">{fret===0?"O":fret}</text>;
+                    return<text key={fret}
+                      x={fbX+MARGIN_L+fi*fretW+fretW/2} y={fbY+MARGIN_T-4}
+                      textAnchor="middle" fontSize={7}
+                      fontFamily="'JetBrains Mono',monospace" fill="#aaa">{fret}</text>;
                   })}
+                  {/* String labels */}
                   {b.tuning.slice().reverse().map((note,di)=>(
-                    <text key={di} x={fbX+MARGIN_L-5} y={fbY+MARGIN_T+di*strH+3} textAnchor="end" fontSize={7} fontFamily="'JetBrains Mono',monospace" fill="#aaa">{note}</text>
+                    <text key={di}
+                      x={fbX+MARGIN_L-4} y={fbY+MARGIN_T+di*strH+3}
+                      textAnchor="end" fontSize={7}
+                      fontFamily="'JetBrains Mono',monospace" fill="#aaa">{note}</text>
                   ))}
+                  {/* Dots */}
                   {b.dots.filter(d=>d.fret>=b.fretStart&&d.fret<=b.fretEnd).map(d=>{
                     const dx=fbX+MARGIN_L+(d.fret-b.fretStart)*fretW+fretW/2;
                     const dy=fbY+MARGIN_T+(strings-1-d.string)*strH;
-                    const r=Math.min(DOT_SIZES[d.size]||11, strH*0.42, fretW*0.42);
+                    const r=Math.min(DOT_SIZES[d.size]||11, strH*0.44, fretW*0.44);
                     const li=layerIds.indexOf(d.layerId);
                     const fill=bw?bwPats[li%bwPats.length]:d.color;
                     const fs=Math.max(5,Math.min(r-2,8));
                     return(
                       <g key={`${d.layerId}-${d.string}-${d.fret}`}>
-                        {d.shape==="circle"&&<circle cx={dx} cy={dy} r={r} fill={fill} stroke={d.isRoot?(bw?"#000":"#fff"):"none"} strokeWidth={d.isRoot?1.5:0}/>}
-                        {d.shape==="square"&&<rect x={dx-r} y={dy-r} width={r*2} height={r*2} fill={fill} rx={1} stroke={d.isRoot?"#fff":"none"} strokeWidth={d.isRoot?1.5:0}/>}
-                        {d.shape==="diamond"&&<polygon points={`${dx},${dy-r} ${dx+r},${dy} ${dx},${dy+r} ${dx-r},${dy}`} fill={fill} stroke={d.isRoot?"#fff":"none"} strokeWidth={d.isRoot?1.5:0}/>}
-                        {d.label&&<text x={dx} y={dy+fs/3} textAnchor="middle" fontSize={fs} fontFamily="'JetBrains Mono',monospace" fontWeight="700" fill={bw&&li===1?"#000":"#fff"}>{d.label}</text>}
+                        {d.shape==="circle"&&<circle cx={dx} cy={dy} r={r} fill={fill}
+                          stroke={d.isRoot?"#fff":"none"} strokeWidth={d.isRoot?1.5:0}/>}
+                        {d.shape==="square"&&<rect x={dx-r} y={dy-r} width={r*2} height={r*2}
+                          fill={fill} rx={1} stroke={d.isRoot?"#fff":"none"} strokeWidth={d.isRoot?1.5:0}/>}
+                        {d.shape==="diamond"&&<polygon
+                          points={`${dx},${dy-r} ${dx+r},${dy} ${dx},${dy+r} ${dx-r},${dy}`}
+                          fill={fill} stroke={d.isRoot?"#fff":"none"} strokeWidth={d.isRoot?1.5:0}/>}
+                        {d.label&&<text x={dx} y={dy+fs/3} textAnchor="middle" fontSize={fs}
+                          fontFamily="'JetBrains Mono',monospace" fontWeight="700"
+                          fill={bw&&li===1?"#000":"#fff"}>{d.label}</text>}
                       </g>
                     );
                   })}
+                  {/* Notes lines */}
                   {notesArea&&Array.from({length:4},(_,li)=>{
                     const ly=fbBtm+MARGIN_B+4+li*((notesH-8)/4);
-                    return<line key={li} x1={cx+ip} y1={ly} x2={cx+cellW-ip} y2={ly} stroke="#eee" strokeWidth={0.7}/>;
+                    return<line key={li} x1={cx+ip} y1={ly} x2={cx+cellW-ip} y2={ly}
+                      stroke="#eee" strokeWidth={0.7}/>;
                   })}
                 </g>
               );
             })}
-            {logoText&&<text x={pageW-pad} y={pageH-10} textAnchor="end" fontSize={8} fontFamily="'JetBrains Mono',monospace" fill="#ccc" letterSpacing="1">{logoText}</text>}
+            {/* Footer */}
+            {logoText&&<text x={pageW-pad} y={pageH-10} textAnchor="end" fontSize={8}
+              fontFamily="'JetBrains Mono',monospace" fill="#ccc" letterSpacing="1">{logoText}</text>}
+          </svg>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+
+// ─── Blank Sheet Modal ────────────────────────────────────────────────────────
+
+function BlankSheetModal({ tuning, logoText, onClose, T }) {
+  const svgRef = useRef(null);
+  const [numDiagrams, setNumDiagrams] = useState(5);
+  const [showStringNames, setShowStringNames] = useState(true);
+  const [showFretNums, setShowFretNums] = useState(true);
+  const [fretCount, setFretCount] = useState(12);
+  const [sheetTitle, setSheetTitle] = useState("Blank Fretboard Diagrams");
+
+  // Page dimensions (A4 portrait)
+  const pageW = 595;
+  const pageH = 842;
+  const pad = 30;
+  const titleH = 36;
+  const footerH = 20;
+  const availH = pageH - pad*2 - titleH - footerH;
+  const diagGap = 12;
+  const diagH = Math.floor((availH - diagGap * (numDiagrams - 1)) / numDiagrams);
+
+  // Fretboard dimensions within each diagram
+  const marginL = showStringNames ? 22 : 10;
+  const marginT = showFretNums ? 18 : 8;
+  const marginR = 10;
+  const marginB = 8;
+  const fbW = pageW - pad*2 - marginL - marginR;
+  const fretW = Math.floor(fbW / fretCount);
+  const strings = tuning.length;
+  const strH = Math.floor((diagH - marginT - marginB) / (strings - 1));
+
+  const handlePrint = () => {
+    const svgEl = svgRef.current?.querySelector("svg");
+    if (!svgEl) return;
+    const svgStr = new XMLSerializer().serializeToString(svgEl);
+    const url = "data:image/svg+xml;charset=utf-8," + encodeURIComponent(svgStr);
+    const win = window.open("","_blank","width=700,height=900");
+    if (!win) return;
+    win.document.write(`<!DOCTYPE html><html><head>
+      <style>@page{size:A4 portrait;margin:0}body{margin:0;background:#fff}img{width:100%;display:block}</style>
+      </head><body><img src="${url}" onload="setTimeout(()=>{window.print();},300)"/></body></html>`);
+    win.document.close();
+  };
+
+  const handleSVG = () => {
+    const svgEl = svgRef.current?.querySelector("svg");
+    if (!svgEl) return;
+    const svgStr = new XMLSerializer().serializeToString(svgEl);
+    const blob = new Blob([svgStr],{type:"image/svg+xml"});
+    const a = document.createElement("a");
+    a.href = URL.createObjectURL(blob);
+    a.download = "blank-fretboard-diagrams.svg";
+    a.click();
+  };
+
+  // Render a single blank fretboard at position (x, y)
+  const renderBlankFretboard = (x, y, idx) => {
+    const fbX = x + marginL;
+    const fbY = y + marginT;
+    const fbBtm = fbY + (strings - 1) * strH;
+    const fbRight = fbX + fretCount * fretW;
+
+    return (
+      <g key={idx}>
+        {/* Nut */}
+        <rect x={fbX - 2} y={fbY} width={4} height={(strings-1)*strH} fill="#555"/>
+
+        {/* Fret lines */}
+        {Array.from({length: fretCount + 1}, (_, fi) => (
+          <line key={fi}
+            x1={fbX + fi*fretW} y1={fbY}
+            x2={fbX + fi*fretW} y2={fbBtm}
+            stroke="#bbb" strokeWidth={0.7}/>
+        ))}
+
+        {/* String lines */}
+        {Array.from({length: strings}, (_, si) => (
+          <line key={si}
+            x1={fbX} y1={fbY + si*strH}
+            x2={fbRight} y2={fbY + si*strH}
+            stroke="#999" strokeWidth={0.6 + si * 0.12}/>
+        ))}
+
+        {/* Fret position markers (3,5,7,9,12) */}
+        {Array.from({length: fretCount}, (_, fi) => {
+          const fret = fi + 1;
+          const cx = fbX + fi*fretW + fretW/2;
+          const midY = fbY + ((strings-1)/2) * strH;
+          if ([3,5,7,9].includes(fret)) {
+            return <circle key={fret} cx={cx} cy={midY} r={3} fill="#ddd"/>;
+          }
+          if (fret === 12) {
+            return (
+              <g key={fret}>
+                <circle cx={cx} cy={midY - strH} r={2.5} fill="#ddd"/>
+                <circle cx={cx} cy={midY + strH} r={2.5} fill="#ddd"/>
+              </g>
+            );
+          }
+          return null;
+        })}
+
+        {/* Fret numbers */}
+        {showFretNums && Array.from({length: fretCount}, (_, fi) => (
+          <text key={fi}
+            x={fbX + fi*fretW + fretW/2} y={fbY - 5}
+            textAnchor="middle" fontSize={7}
+            fontFamily="'JetBrains Mono',monospace" fill="#aaa">
+            {fi + 1}
+          </text>
+        ))}
+
+        {/* String names */}
+        {showStringNames && tuning.slice().reverse().map((note, si) => (
+          <text key={si}
+            x={fbX - 5} y={fbY + si*strH + 3}
+            textAnchor="end" fontSize={7}
+            fontFamily="'JetBrains Mono',monospace" fill="#aaa">
+            {note}
+          </text>
+        ))}
+      </g>
+    );
+  };
+
+  return (
+    <div style={{ background:T.surface, borderRadius:"16px", border:`1px solid ${T.border}`, width:"100%", maxWidth:"700px", maxHeight:"90vh", display:"flex", flexDirection:"column", overflow:"hidden" }}>
+      {/* Header */}
+      <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", padding:"14px 20px", borderBottom:`1px solid ${T.border}`, flexWrap:"wrap", gap:"8px" }}>
+        <span style={{ fontSize:"13px", fontWeight:"700", color:T.textHi }}>Blank Fretboard Sheet</span>
+        <div style={{ display:"flex", gap:"6px", flexWrap:"wrap", alignItems:"center" }}>
+          <input
+            value={sheetTitle}
+            onChange={e => setSheetTitle(e.target.value)}
+            placeholder="Sheet title"
+            style={{ background:T.inputBg, border:`1px solid ${T.border}`, borderRadius:"6px", color:T.textHi, padding:"4px 8px", fontSize:"11px", width:"180px", outline:"none", fontFamily:"Georgia,serif", fontStyle:"italic" }}
+          />
+          <span style={{ fontSize:"11px", color:T.textLo, fontFamily:"'JetBrains Mono',monospace" }}>Diagrams:</span>
+          {[3,4,5,6].map(n => (
+            <MiniBtn key={n} onClick={() => setNumDiagrams(n)} active={numDiagrams===n} T={T}>{n}</MiniBtn>
+          ))}
+          <span style={{ fontSize:"11px", color:T.textLo, fontFamily:"'JetBrains Mono',monospace", marginLeft:"4px" }}>Frets:</span>
+          {[12,15,17].map(n => (
+            <MiniBtn key={n} onClick={() => setFretCount(n)} active={fretCount===n} T={T}>{n}</MiniBtn>
+          ))}
+          <MiniBtn onClick={() => setShowStringNames(s => !s)} active={showStringNames} T={T}>String names</MiniBtn>
+          <MiniBtn onClick={() => setShowFretNums(s => !s)} active={showFretNums} T={T}>Fret nos.</MiniBtn>
+          <button onClick={handleSVG} style={{ padding:"5px 12px", borderRadius:"6px", fontSize:"11px", border:"1.5px solid #06B6D4", background:"#082f49", color:"#22d3ee", cursor:"pointer" }}>Save SVG</button>
+          <button onClick={handlePrint} style={{ padding:"5px 12px", borderRadius:"6px", fontSize:"11px", border:"1.5px solid #22C55E", background:"#052e16", color:"#4ade80", cursor:"pointer", fontWeight:"600" }}>🖨 Print</button>
+          <button onClick={onClose} style={{ padding:"5px 12px", borderRadius:"6px", fontSize:"11px", border:`1.5px solid ${T.border}`, background:"transparent", color:T.textMid, cursor:"pointer" }}>Close</button>
+        </div>
+      </div>
+
+      {/* Preview */}
+      <div style={{ flex:1, overflow:"auto", padding:"24px", background:T.bg, display:"flex", justifyContent:"center" }}>
+        <div ref={svgRef} style={{ background:"#fff", boxShadow:"0 8px 40px rgba(0,0,0,0.4)", borderRadius:"3px", flexShrink:0 }}>
+          <svg xmlns="http://www.w3.org/2000/svg" width={pageW} height={pageH} viewBox={`0 0 ${pageW} ${pageH}`}>
+            <rect width={pageW} height={pageH} fill="#fff"/>
+
+            {/* Title */}
+            <text x={pageW/2} y={pad + 22} textAnchor="middle" fontSize={14}
+              fontFamily="Georgia,serif" fontStyle="italic" fill="#333">
+              {sheetTitle || "Blank Fretboard Diagrams"}
+            </text>
+
+            {/* Diagrams */}
+            {Array.from({length: numDiagrams}, (_, i) => {
+              const y = pad + titleH + i * (diagH + diagGap);
+              return renderBlankFretboard(pad, y, i);
+            })}
+
+            {/* Footer */}
+            <text x={pageW/2} y={pageH - 10} textAnchor="middle" fontSize={8}
+              fontFamily="'JetBrains Mono',monospace" fill="#bbb" letterSpacing="1">
+              {logoText || "unlocktheguitar.net"}
+            </text>
           </svg>
         </div>
       </div>
