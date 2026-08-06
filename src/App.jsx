@@ -1563,9 +1563,9 @@ function MultiBoardModal({ boards, logoText, onClose, T }) {
   const pageW = 794;
   const pageH = 1122;
   const pad   = 32;
-  const rows  = boards.length;
   const cellW = pageW - pad*2;
-  const cellH = (pageH - pad*2 - 24) / rows;
+  const cellH = 220; // fixed height per diagram — never stretches
+  const rows  = boards.length;
 
   const handlePrint = () => {
     const svgEl = svgRef.current?.querySelector("svg");
