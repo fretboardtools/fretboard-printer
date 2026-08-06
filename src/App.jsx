@@ -1559,32 +1559,42 @@ function MultiBoardModal({ boards, logoText, onClose, T }) {
   const [notesArea, setNotesArea] = useState(false);
   const svgRef = useRef(null);
 
-  const cols  = 1;
-  const pageW = 794;
-  const pageH = 1122;
-  const pad   = 32;
-  const cellW = pageW - pad*2; // 730px
-  const cellH = 240; // title + fretboard scaled to match main diagram proportions
-  const rows  = boards.length;
+  const cols     = 1;
+  const pageW    = 794;
+  const pageH    = 1122;
+  const pad      = 32;
+  const footer   = 20;
+  const PER_PAGE = 4;
+  const cellW    = pageW - pad*2;
+  const cellH    = Math.floor((pageH - pad*2 - footer) / PER_PAGE); // 259px — exactly 4 per page
+  const pages    = Math.ceil(boards.length / PER_PAGE);
 
   const handlePrint = () => {
-    const svgEl = svgRef.current?.querySelector("svg");
-    if (!svgEl) return;
-    const clone = svgEl.cloneNode(true);
-    clone.setAttribute("width", String(pageW));
-    clone.setAttribute("height", String(pageH));
-    const svgStr = new XMLSerializer().serializeToString(clone);
-    const url = "data:image/svg+xml;charset=utf-8," + encodeURIComponent(svgStr);
+    const container = svgRef.current;
+    if (!container) return;
+    const svgEls = container.querySelectorAll("svg");
+    // Combine all pages into one printable document
+    const svgStrs = Array.from(svgEls).map(el => {
+      const clone = el.cloneNode(true);
+      clone.setAttribute("width", String(pageW));
+      clone.setAttribute("height", String(pageH));
+      return new XMLSerializer().serializeToString(clone);
+    });
     const win = window.open("","_blank","width=700,height=900");
     if (!win) return;
+    const imgs = svgStrs.map(s =>
+      `<img src="data:image/svg+xml;charset=utf-8,${encodeURIComponent(s)}" style="width:100%;display:block;page-break-after:always;"/>`
+    ).join("");
     win.document.write(`<!DOCTYPE html><html><head>
-      <style>@page{size:A4 portrait;margin:0}body{margin:0;background:#fff}img{width:100%;height:100vh;object-fit:contain;display:block}</style>
-      </head><body><img src="${url}" onload="setTimeout(()=>{window.print();},400)"/></body></html>`);
+      <style>@page{size:A4 portrait;margin:0}body{margin:0;background:#fff}img{width:100%;display:block}</style>
+      </head><body>${imgs}<script>window.onload=function(){setTimeout(function(){window.print();},400);}<\/script></body></html>`);
     win.document.close();
   };
 
   const handleSVG = () => {
-    const svgEl = svgRef.current?.querySelector("svg");
+    const container = svgRef.current;
+    if (!container) return;
+    const svgEl = container.querySelector("svg");
     if (!svgEl) return;
     const clone = svgEl.cloneNode(true);
     clone.setAttribute("width", String(pageW));
@@ -1593,6 +1603,101 @@ function MultiBoardModal({ boards, logoText, onClose, T }) {
     const blob = new Blob([svgStr],{type:"image/svg+xml"});
     const a = document.createElement("a"); a.href=URL.createObjectURL(blob); a.download="multi-board.svg"; a.click();
   };
+
+  // Render one SVG page worth of boards
+  const renderPage = (pageBoards, pageIndex) => (
+    <svg key={pageIndex} xmlns="http://www.w3.org/2000/svg"
+      viewBox={`0 0 ${pageW} ${pageH}`}
+      style={{ display:"block", width:"100%", height:"auto", marginBottom:"8px" }}>
+      <defs>
+        {[0,1,2,3,4].map(i=>(
+          <pattern key={i} id={`mbw${pageIndex}_${i}`} patternUnits="userSpaceOnUse" width="4" height="4">
+            {i===0&&<rect width="4" height="4" fill="#000"/>}
+            {i===1&&<><rect width="4" height="4" fill="#fff" stroke="#000" strokeWidth="1.5"/></>}
+            {i===2&&<><rect width="4" height="4" fill="#fff"/><line x1="0" y1="0" x2="4" y2="4" stroke="#000" strokeWidth="1"/><line x1="0" y1="4" x2="4" y2="0" stroke="#000" strokeWidth="1"/></>}
+            {i===3&&<><rect width="4" height="4" fill="#fff"/><line x1="0" y1="2" x2="4" y2="2" stroke="#000" strokeWidth="1"/></>}
+            {i===4&&<rect width="4" height="4" fill="#888"/>}
+          </pattern>
+        ))}
+      </defs>
+      <rect width={pageW} height={pageH} fill="#fff"/>
+      {pageBoards.map((b, i) => {
+        const cx = pad;
+        const cy = pad + i * cellH;
+        const ip = 8;
+        const ML = 28;
+        const MT = 18;
+        const MR = 8;
+        const MB = 8;
+        const titleH = b.title ? 16 : 0;
+        const notesH = notesArea ? 32 : 0;
+        const fretCount = b.fretEnd - b.fretStart + 1;
+        const strings = b.tuning.length;
+        const fbAvailW = cellW - ip*2 - ML - MR;
+        const fretW = Math.floor(fbAvailW / fretCount);
+        const strH  = Math.round(fretW * (28/52));
+        const fbX   = cx + ip + ML;
+        const fbY   = cy + ip + titleH + MT;
+        const fbBtm = fbY + (strings-1)*strH;
+        const fbR   = fbX + fretCount*fretW;
+        const layerIds = [...new Set(b.dots.map(d=>d.layerId))];
+        const bwPats = [
+          `url(#mbw${pageIndex}_0)`,`url(#mbw${pageIndex}_1)`,
+          `url(#mbw${pageIndex}_2)`,`url(#mbw${pageIndex}_3)`,`url(#mbw${pageIndex}_4)`
+        ];
+        return (
+          <g key={b.id}>
+            <rect x={cx+1} y={cy+1} width={cellW-2} height={cellH-2} fill="none" stroke="#e0e5ee" strokeWidth={0.5} rx={3}/>
+            {b.title&&<text x={cx+ip} y={cy+ip+12} fontSize={10} fontFamily="Georgia,serif" fontStyle="italic" fill="#222">{b.title}</text>}
+            {b.fretStart===1&&<rect x={fbX-2} y={fbY} width={3} height={(strings-1)*strH} fill="#555"/>}
+            {Array.from({length:fretCount+1},(_,fi)=>(
+              <line key={fi} x1={fbX+fi*fretW} y1={fbY} x2={fbX+fi*fretW} y2={fbBtm} stroke="#ccc" strokeWidth={0.6}/>
+            ))}
+            {Array.from({length:strings},(_,si)=>(
+              <line key={si} x1={fbX} y1={fbY+si*strH} x2={fbR} y2={fbY+si*strH} stroke="#bbb" strokeWidth={0.5+si*0.08}/>
+            ))}
+            {Array.from({length:fretCount},(_,fi)=>{
+              const fret=b.fretStart+fi;
+              const mcx=fbX+fi*fretW+fretW/2;
+              const mcy=fbY+((strings-1)/2)*strH;
+              const mr=Math.min(3,strH*0.18,fretW*0.18);
+              if([3,5,7,9].includes(fret))return<circle key={fret} cx={mcx} cy={mcy} r={mr} fill="#ddd"/>;
+              if(fret===12)return<g key={fret}><circle cx={mcx} cy={mcy-strH} r={mr} fill="#ddd"/><circle cx={mcx} cy={mcy+strH} r={mr} fill="#ddd"/></g>;
+              return null;
+            })}
+            {b.showFretNums&&Array.from({length:fretCount},(_,fi)=>{
+              const fret=b.fretStart+fi;
+              return<text key={fret} x={fbX+fi*fretW+fretW/2} y={fbY-4} textAnchor="middle" fontSize={6} fontFamily="'JetBrains Mono',monospace" fill="#aaa">{fret}</text>;
+            })}
+            {b.tuning.slice().reverse().map((note,di)=>(
+              <text key={di} x={fbX-4} y={fbY+di*strH+3} textAnchor="end" fontSize={6} fontFamily="'JetBrains Mono',monospace" fill="#aaa">{note}</text>
+            ))}
+            {b.dots.filter(d=>d.fret>=b.fretStart&&d.fret<=b.fretEnd).map(d=>{
+              const dx=fbX+(d.fret-b.fretStart)*fretW+fretW/2;
+              const dy=fbY+(strings-1-d.string)*strH;
+              const r=Math.min(DOT_SIZES[d.size]||11, strH*0.42, fretW*0.42);
+              const li=layerIds.indexOf(d.layerId);
+              const fill=bw?bwPats[li%bwPats.length]:d.color;
+              const fs=Math.max(4,Math.min(r-2,7));
+              return(
+                <g key={`${d.layerId}-${d.string}-${d.fret}`}>
+                  {d.shape==="circle"&&<circle cx={dx} cy={dy} r={r} fill={fill} stroke={d.isRoot?"#fff":"none"} strokeWidth={d.isRoot?1.5:0}/>}
+                  {d.shape==="square"&&<rect x={dx-r} y={dy-r} width={r*2} height={r*2} fill={fill} rx={1} stroke={d.isRoot?"#fff":"none"} strokeWidth={d.isRoot?1.5:0}/>}
+                  {d.shape==="diamond"&&<polygon points={`${dx},${dy-r} ${dx+r},${dy} ${dx},${dy+r} ${dx-r},${dy}`} fill={fill} stroke={d.isRoot?"#fff":"none"} strokeWidth={d.isRoot?1.5:0}/>}
+                  {d.label&&<text x={dx} y={dy+fs/3} textAnchor="middle" fontSize={fs} fontFamily="'JetBrains Mono',monospace" fontWeight="700" fill={bw&&li===1?"#000":"#fff"}>{d.label}</text>}
+                </g>
+              );
+            })}
+            {notesArea&&Array.from({length:4},(_,li)=>{
+              const ly=fbBtm+MB+4+li*((notesH-8)/4);
+              return<line key={li} x1={cx+ip} y1={ly} x2={cx+cellW-ip} y2={ly} stroke="#eee" strokeWidth={0.7}/>;
+            })}
+          </g>
+        );
+      })}
+      {logoText&&<text x={pageW-pad} y={pageH-8} textAnchor="end" fontSize={8} fontFamily="'JetBrains Mono',monospace" fill="#ccc" letterSpacing="1">{logoText}</text>}
+    </svg>
+  );
 
   return (
     <div style={{ background:T.surface,borderRadius:"16px",border:`1px solid ${T.border}`,width:"100%",maxWidth:"1200px",maxHeight:"90vh",display:"flex",flexDirection:"column",overflow:"hidden" }}>
@@ -1614,132 +1719,16 @@ function MultiBoardModal({ boards, logoText, onClose, T }) {
 
       {/* Preview */}
       <div style={{ flex:1,overflow:"auto",padding:"16px",background:T.bg,display:"flex",justifyContent:"center",alignItems:"flex-start" }}>
-        <div ref={svgRef} style={{ background:"#fff",boxShadow:"0 4px 24px rgba(0,0,0,0.3)",borderRadius:"2px",width:"100%",maxWidth:`${pageW}px` }}>
-          <svg xmlns="http://www.w3.org/2000/svg"
-            viewBox={`0 0 ${pageW} ${pageH}`}
-            style={{ display:"block", width:"100%", height:"auto" }}>
-            <defs>
-              {[0,1,2,3,4].map(i=>(
-                <pattern key={i} id={`mbw${i}`} patternUnits="userSpaceOnUse" width="4" height="4">
-                  {i===0&&<rect width="4" height="4" fill="#000"/>}
-                  {i===1&&<><rect width="4" height="4" fill="#fff" stroke="#000" strokeWidth="1.5"/></>}
-                  {i===2&&<><rect width="4" height="4" fill="#fff"/><line x1="0" y1="0" x2="4" y2="4" stroke="#000" strokeWidth="1"/><line x1="0" y1="4" x2="4" y2="0" stroke="#000" strokeWidth="1"/></>}
-                  {i===3&&<><rect width="4" height="4" fill="#fff"/><line x1="0" y1="2" x2="4" y2="2" stroke="#000" strokeWidth="1"/></>}
-                  {i===4&&<rect width="4" height="4" fill="#888"/>}
-                </pattern>
-              ))}
-            </defs>
-            <rect width={pageW} height={pageH} fill="#fff"/>
-            {boards.map((b,i) => {
-              const col = i % cols;
-              const row = Math.floor(i / cols);
-              const cx = pad + col * cellW;
-              const cy = pad + row * cellH;
-              const ip = 8;
-              const ML = 28; // string labels
-              const MT = 18; // fret numbers
-              const MR = 8;
-              const MB = 8;
-              const titleH = b.title ? 16 : 0;
-              const notesH = notesArea ? 32 : 0;
-              const fretCount = b.fretEnd - b.fretStart + 1;
-              const strings = b.tuning.length;
-              // Scale main fretboard (FRET_W=52, STRING_H=28) to fit cell width
-              const fbAvailW = cellW - ip*2 - ML - MR;
-              const fretW = Math.floor(fbAvailW / fretCount);
-              const strH  = Math.round(fretW * (28/52)); // preserve main fretboard aspect ratio
-              const fbX   = cx + ip + ML;
-              const fbY   = cy + ip + titleH + MT;
-              const fbBtm = fbY + (strings-1)*strH;
-              const fbR   = fbX + fretCount*fretW;
-              const layerIds = [...new Set(b.dots.map(d=>d.layerId))];
-              const bwPats = ["url(#mbw0)","url(#mbw1)","url(#mbw2)","url(#mbw3)","url(#mbw4)"];
-
-              return (
-                <g key={b.id}>
-                  {/* Cell border */}
-                  <rect x={cx+1} y={cy+1} width={cellW-2} height={cellH-2}
-                    fill="none" stroke="#e0e5ee" strokeWidth={0.5} rx={3}/>
-                  {/* Title */}
-                  {b.title&&<text x={cx+ip} y={cy+ip+12} fontSize={10}
-                    fontFamily="Georgia,serif" fontStyle="italic" fill="#222">{b.title}</text>}
-                  {/* Nut */}
-                  {b.fretStart===1&&<rect x={fbX-2} y={fbY} width={3} height={(strings-1)*strH} fill="#555"/>}
-                  {/* Fret lines */}
-                  {Array.from({length:fretCount+1},(_,fi)=>(
-                    <line key={fi} x1={fbX+fi*fretW} y1={fbY} x2={fbX+fi*fretW} y2={fbBtm} stroke="#ccc" strokeWidth={0.6}/>
-                  ))}
-                  {/* String lines */}
-                  {Array.from({length:strings},(_,si)=>(
-                    <line key={si} x1={fbX} y1={fbY+si*strH} x2={fbR} y2={fbY+si*strH} stroke="#bbb" strokeWidth={0.5+si*0.08}/>
-                  ))}
-                  {/* Position markers */}
-                  {Array.from({length:fretCount},(_,fi)=>{
-                    const fret=b.fretStart+fi;
-                    const mcx=fbX+fi*fretW+fretW/2;
-                    const mcy=fbY+((strings-1)/2)*strH;
-                    const mr=Math.min(3,strH*0.18,fretW*0.18);
-                    if([3,5,7,9].includes(fret))return<circle key={fret} cx={mcx} cy={mcy} r={mr} fill="#ddd"/>;
-                    if(fret===12)return<g key={fret}>
-                      <circle cx={mcx} cy={mcy-strH} r={mr} fill="#ddd"/>
-                      <circle cx={mcx} cy={mcy+strH} r={mr} fill="#ddd"/>
-                    </g>;
-                    return null;
-                  })}
-                  {/* Fret numbers */}
-                  {b.showFretNums&&Array.from({length:fretCount},(_,fi)=>{
-                    const fret=b.fretStart+fi;
-                    return<text key={fret} x={fbX+fi*fretW+fretW/2} y={fbY-4}
-                      textAnchor="middle" fontSize={6}
-                      fontFamily="'JetBrains Mono',monospace" fill="#aaa">{fret}</text>;
-                  })}
-                  {/* String labels */}
-                  {b.tuning.slice().reverse().map((note,di)=>(
-                    <text key={di} x={fbX-4} y={fbY+di*strH+3}
-                      textAnchor="end" fontSize={6}
-                      fontFamily="'JetBrains Mono',monospace" fill="#aaa">{note}</text>
-                  ))}
-                  {/* Dots */}
-                  {b.dots.filter(d=>d.fret>=b.fretStart&&d.fret<=b.fretEnd).map(d=>{
-                    const dx=fbX+(d.fret-b.fretStart)*fretW+fretW/2;
-                    const dy=fbY+(strings-1-d.string)*strH;
-                    const r=Math.min(DOT_SIZES[d.size]||11, strH*0.42, fretW*0.42);
-                    const li=layerIds.indexOf(d.layerId);
-                    const fill=bw?bwPats[li%bwPats.length]:d.color;
-                    const fs=Math.max(4,Math.min(r-2,7));
-                    return(
-                      <g key={`${d.layerId}-${d.string}-${d.fret}`}>
-                        {d.shape==="circle"&&<circle cx={dx} cy={dy} r={r} fill={fill}
-                          stroke={d.isRoot?"#fff":"none"} strokeWidth={d.isRoot?1.5:0}/>}
-                        {d.shape==="square"&&<rect x={dx-r} y={dy-r} width={r*2} height={r*2}
-                          fill={fill} rx={1} stroke={d.isRoot?"#fff":"none"} strokeWidth={d.isRoot?1.5:0}/>}
-                        {d.shape==="diamond"&&<polygon
-                          points={`${dx},${dy-r} ${dx+r},${dy} ${dx},${dy+r} ${dx-r},${dy}`}
-                          fill={fill} stroke={d.isRoot?"#fff":"none"} strokeWidth={d.isRoot?1.5:0}/>}
-                        {d.label&&<text x={dx} y={dy+fs/3} textAnchor="middle" fontSize={fs}
-                          fontFamily="'JetBrains Mono',monospace" fontWeight="700"
-                          fill={bw&&li===1?"#000":"#fff"}>{d.label}</text>}
-                      </g>
-                    );
-                  })}
-                  {/* Notes lines */}
-                  {notesArea&&Array.from({length:4},(_,li)=>{
-                    const ly=fbBtm+MB+4+li*((notesH-8)/4);
-                    return<line key={li} x1={cx+ip} y1={ly} x2={cx+cellW-ip} y2={ly}
-                      stroke="#eee" strokeWidth={0.7}/>;
-                  })}
-                </g>
-              );
-            })}
-            {/* Footer */}
-            {logoText&&<text x={pageW-pad} y={pageH-10} textAnchor="end" fontSize={8}
-              fontFamily="'JetBrains Mono',monospace" fill="#ccc" letterSpacing="1">{logoText}</text>}
-          </svg>
+        <div ref={svgRef} style={{ width:"100%",maxWidth:`${pageW}px`,display:"flex",flexDirection:"column",gap:"8px" }}>
+          {Array.from({length:pages},(_,pi)=>
+            renderPage(boards.slice(pi*PER_PAGE, (pi+1)*PER_PAGE), pi)
+          )}
         </div>
       </div>
     </div>
   );
 }
+
 
 
 // ─── Blank Sheet Modal ────────────────────────────────────────────────────────
