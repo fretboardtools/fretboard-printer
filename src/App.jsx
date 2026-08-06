@@ -1553,31 +1553,28 @@ export default function FretboardPrinter() {
 function MultiBoardModal({ boards, logoText, onClose, T }) {
   const [bw,        setBw]        = useState(false);
   const [notesArea, setNotesArea] = useState(false);
-  const [orient,    setOrient]    = useState("landscape");
   const svgRef = useRef(null);
 
-  const cols = orient === "landscape" ? 2 : 1;
-  const page = orient === "landscape" ? { w:1122, h:794 } : { w:794, h:1122 };
-  const pageW = page.w;
-  const pageH = page.h;
+  const cols  = 1;
+  const pageW = 794;
+  const pageH = 1122;
   const pad   = 32;
-  const rows  = Math.ceil(boards.length / cols);
-  const cellW = (pageW - pad*2) / cols;
+  const rows  = boards.length;
+  const cellW = pageW - pad*2;
   const cellH = (pageH - pad*2 - 24) / rows;
 
   const handlePrint = () => {
     const svgEl = svgRef.current?.querySelector("svg");
     if (!svgEl) return;
-    // Add explicit dimensions before serialising so it prints at full size
     const clone = svgEl.cloneNode(true);
     clone.setAttribute("width", String(pageW));
     clone.setAttribute("height", String(pageH));
     const svgStr = new XMLSerializer().serializeToString(clone);
     const url = "data:image/svg+xml;charset=utf-8," + encodeURIComponent(svgStr);
-    const win = window.open("","_blank","width=900,height=700");
+    const win = window.open("","_blank","width=700,height=900");
     if (!win) return;
     win.document.write(`<!DOCTYPE html><html><head>
-      <style>@page{size:A4 ${orient};margin:0}body{margin:0;background:#fff}img{width:100%;height:100vh;object-fit:contain;display:block}</style>
+      <style>@page{size:A4 portrait;margin:0}body{margin:0;background:#fff}img{width:100%;height:100vh;object-fit:contain;display:block}</style>
       </head><body><img src="${url}" onload="setTimeout(()=>{window.print();},400)"/></body></html>`);
     win.document.close();
   };
@@ -1604,9 +1601,6 @@ function MultiBoardModal({ boards, logoText, onClose, T }) {
 
       {/* Toolbar row 2 — controls */}
       <div style={{ display:"flex",alignItems:"center",gap:"6px",padding:"8px 16px 12px",borderBottom:`1px solid ${T.border}`,flexWrap:"wrap" }}>
-        <MiniBtn onClick={()=>setOrient(o=>o==="landscape"?"portrait":"landscape")} active={orient==="portrait"} T={T}>
-          {orient==="landscape"?"⟺ Landscape":"⟳ Portrait"}
-        </MiniBtn>
         <MiniBtn onClick={()=>setBw(b=>!b)} active={bw} T={T}>B&W</MiniBtn>
         <MiniBtn onClick={()=>setNotesArea(n=>!n)} active={notesArea} T={T}>Notes</MiniBtn>
         <div style={{ width:"1px",height:"20px",background:T.border,margin:"0 2px" }}/>
