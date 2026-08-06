@@ -1563,8 +1563,8 @@ function MultiBoardModal({ boards, logoText, onClose, T }) {
   const pageW = 794;
   const pageH = 1122;
   const pad   = 32;
-  const cellW = pageW - pad*2;
-  const cellH = 280; // matches approx main fretboard height
+  const cellW = pageW - pad*2; // 730px
+  const cellH = 240; // title + fretboard scaled to match main diagram proportions
   const rows  = boards.length;
 
   const handlePrint = () => {
@@ -1635,20 +1635,19 @@ function MultiBoardModal({ boards, logoText, onClose, T }) {
               const row = Math.floor(i / cols);
               const cx = pad + col * cellW;
               const cy = pad + row * cellH;
-              const ip = 10;
-              const ML = 28;
-              const MT = 16;
+              const ip = 8;
+              const ML = 28; // string labels
+              const MT = 18; // fret numbers
               const MR = 8;
               const MB = 8;
-              const titleH = b.title ? 18 : 0;
+              const titleH = b.title ? 16 : 0;
               const notesH = notesArea ? 32 : 0;
-              const fbAvailW = cellW - ip*2 - ML - MR;
-              const fbAvailH = cellH - ip*2 - titleH - notesH - MT - MB;
               const fretCount = b.fretEnd - b.fretStart + 1;
               const strings = b.tuning.length;
-              // Fill available width — same approach as main fretboard
+              // Scale main fretboard (FRET_W=52, STRING_H=28) to fit cell width
+              const fbAvailW = cellW - ip*2 - ML - MR;
               const fretW = Math.floor(fbAvailW / fretCount);
-              const strH  = Math.floor(fbAvailH / Math.max(strings-1, 1));
+              const strH  = Math.round(fretW * (28/52)); // preserve main fretboard aspect ratio
               const fbX   = cx + ip + ML;
               const fbY   = cy + ip + titleH + MT;
               const fbBtm = fbY + (strings-1)*strH;
