@@ -1622,8 +1622,10 @@ function MultiBoardModal({ boards, logoText, onClose, T }) {
       </defs>
       <rect width={pageW} height={pageH} fill="#fff"/>
       {pageBoards.map((b, i) => {
+        const totalH = pageBoards.length * cellH;
+        const topOffset = Math.floor((pageH - totalH) / 2);
         const cx = pad;
-        const cy = pad + i * cellH;
+        const cy = topOffset + i * cellH;
         const ip = 8;
         const ML = 28;
         const MT = 18;
