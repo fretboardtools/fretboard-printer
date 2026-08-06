@@ -1,4 +1,5 @@
 import { useState, useRef, useCallback, useEffect } from "react";
+// v2.1 — multiboard landscape/portrait fix
 
 // ─── Music Theory ─────────────────────────────────────────────────────────────
 
