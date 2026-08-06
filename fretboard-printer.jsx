@@ -1568,20 +1568,27 @@ function MultiBoardModal({ boards, logoText, onClose, T }) {
   const handlePrint = () => {
     const svgEl = svgRef.current?.querySelector("svg");
     if (!svgEl) return;
-    const svgStr = new XMLSerializer().serializeToString(svgEl);
+    // Add explicit dimensions before serialising so it prints at full size
+    const clone = svgEl.cloneNode(true);
+    clone.setAttribute("width", String(pageW));
+    clone.setAttribute("height", String(pageH));
+    const svgStr = new XMLSerializer().serializeToString(clone);
     const url = "data:image/svg+xml;charset=utf-8," + encodeURIComponent(svgStr);
     const win = window.open("","_blank","width=900,height=700");
     if (!win) return;
     win.document.write(`<!DOCTYPE html><html><head>
       <style>@page{size:A4 ${orient};margin:0}body{margin:0;background:#fff}img{width:100%;height:100vh;object-fit:contain;display:block}</style>
-      </head><body><img src="${url}" onload="setTimeout(()=>{window.print();},300)"/></body></html>`);
+      </head><body><img src="${url}" onload="setTimeout(()=>{window.print();},400)"/></body></html>`);
     win.document.close();
   };
 
   const handleSVG = () => {
     const svgEl = svgRef.current?.querySelector("svg");
     if (!svgEl) return;
-    const svgStr = new XMLSerializer().serializeToString(svgEl);
+    const clone = svgEl.cloneNode(true);
+    clone.setAttribute("width", String(pageW));
+    clone.setAttribute("height", String(pageH));
+    const svgStr = new XMLSerializer().serializeToString(clone);
     const blob = new Blob([svgStr],{type:"image/svg+xml"});
     const a = document.createElement("a"); a.href=URL.createObjectURL(blob); a.download="multi-board.svg"; a.click();
   };
@@ -1595,7 +1602,7 @@ function MultiBoardModal({ boards, logoText, onClose, T }) {
           {[1,2,3].map(c=>(
             <MiniBtn key={c} onClick={()=>setCols(c)} active={cols===c} T={T}>{c}</MiniBtn>
           ))}
-          <MiniBtn onClick={()=>setOrient(o=>o==="landscape"?"portrait":"landscape")} active={false} T={T}>
+          <MiniBtn onClick={()=>setOrient(o=>o==="landscape"?"portrait":"landscape")} active={orient==="portrait"} T={T}>
             {orient==="landscape"?"⟺ Landscape":"⟳ Portrait"}
           </MiniBtn>
           <MiniBtn onClick={()=>setBw(b=>!b)} active={bw} T={T}>B&W</MiniBtn>
@@ -1605,11 +1612,11 @@ function MultiBoardModal({ boards, logoText, onClose, T }) {
           <button onClick={onClose} style={{ padding:"5px 12px",borderRadius:"6px",fontSize:"11px",border:`1.5px solid ${T.border}`,background:"transparent",color:T.textMid,cursor:"pointer" }}>Close</button>
         </div>
       </div>
-      <div style={{ flex:1,overflow:"auto",padding:"24px",background:T.bg,display:"flex",justifyContent:"center",alignItems:"flex-start" }}>
-        <div ref={svgRef} style={{ background:"#fff",boxShadow:"0 8px 40px rgba(0,0,0,0.4)",borderRadius:"3px",flexShrink:0,maxWidth:"100%" }}>
-          <svg xmlns="http://www.w3.org/2000/svg" width={pageW} height={pageH}
+      <div style={{ flex:1,overflow:"auto",padding:"16px",background:T.bg,display:"flex",justifyContent:"center",alignItems:"flex-start" }}>
+        <div ref={svgRef} style={{ background:"#fff",boxShadow:"0 4px 24px rgba(0,0,0,0.3)",borderRadius:"2px",width:"100%" }}>
+          <svg xmlns="http://www.w3.org/2000/svg"
             viewBox={`0 0 ${pageW} ${pageH}`}
-            style={{ display:"block", maxWidth:"100%", height:"auto" }}>
+            style={{ display:"block", width:"100%", height:"auto" }}>
             <defs>
               {[0,1,2,3,4].map(i=>(
                 <pattern key={i} id={`mbw${i}`} patternUnits="userSpaceOnUse" width="4" height="4">
