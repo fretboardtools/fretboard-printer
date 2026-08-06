@@ -1596,25 +1596,33 @@ function MultiBoardModal({ boards, logoText, onClose, T }) {
 
   return (
     <div style={{ background:T.surface,borderRadius:"16px",border:`1px solid ${T.border}`,width:"100%",maxWidth:"1200px",maxHeight:"90vh",display:"flex",flexDirection:"column",overflow:"hidden" }}>
-      <div style={{ display:"flex",alignItems:"center",justifyContent:"space-between",padding:"14px 20px",borderBottom:`1px solid ${T.border}`,flexWrap:"wrap",gap:"8px" }}>
+
+      {/* Toolbar row 1 — title + close */}
+      <div style={{ display:"flex",alignItems:"center",justifyContent:"space-between",padding:"12px 16px 0",gap:"8px" }}>
         <span style={{ fontSize:"13px",fontWeight:"700",color:T.textHi }}>Multi-Board — {boards.length} diagram{boards.length!==1?"s":""}</span>
-        <div style={{ display:"flex",gap:"6px",flexWrap:"wrap",alignItems:"center" }}>
-          <span style={{ fontSize:"11px",color:T.textLo,fontFamily:"'JetBrains Mono',monospace" }}>Columns:</span>
-          {[1,2,3].map(c=>(
-            <MiniBtn key={c} onClick={()=>setCols(c)} active={cols===c} T={T}>{c}</MiniBtn>
-          ))}
-          <MiniBtn onClick={()=>setOrient(o=>o==="landscape"?"portrait":"landscape")} active={orient==="portrait"} T={T}>
-            {orient==="landscape"?"⟺ Landscape":"⟳ Portrait"}
-          </MiniBtn>
-          <MiniBtn onClick={()=>setBw(b=>!b)} active={bw} T={T}>B&W</MiniBtn>
-          <MiniBtn onClick={()=>setNotesArea(n=>!n)} active={notesArea} T={T}>Notes lines</MiniBtn>
-          <button onClick={handleSVG} style={{ padding:"5px 12px",borderRadius:"6px",fontSize:"11px",border:"1.5px solid #06B6D4",background:"#082f49",color:"#22d3ee",cursor:"pointer" }}>Save SVG</button>
-          <button onClick={handlePrint} style={{ padding:"5px 12px",borderRadius:"6px",fontSize:"11px",border:"1.5px solid #22C55E",background:"#052e16",color:"#4ade80",cursor:"pointer",fontWeight:"600" }}>🖨 Print</button>
-          <button onClick={onClose} style={{ padding:"5px 12px",borderRadius:"6px",fontSize:"11px",border:`1.5px solid ${T.border}`,background:"transparent",color:T.textMid,cursor:"pointer" }}>Close</button>
-        </div>
+        <button onClick={onClose} style={{ padding:"5px 12px",borderRadius:"6px",fontSize:"11px",border:`1.5px solid ${T.border}`,background:"transparent",color:T.textMid,cursor:"pointer" }}>Close</button>
       </div>
+
+      {/* Toolbar row 2 — controls */}
+      <div style={{ display:"flex",alignItems:"center",gap:"6px",padding:"8px 16px 12px",borderBottom:`1px solid ${T.border}`,flexWrap:"wrap" }}>
+        <span style={{ fontSize:"11px",color:T.textLo,fontFamily:"'JetBrains Mono',monospace" }}>Cols:</span>
+        {[1,2,3].map(c=>(
+          <MiniBtn key={c} onClick={()=>setCols(c)} active={cols===c} T={T}>{c}</MiniBtn>
+        ))}
+        <div style={{ width:"1px",height:"20px",background:T.border,margin:"0 2px" }}/>
+        <MiniBtn onClick={()=>setOrient(o=>o==="landscape"?"portrait":"landscape")} active={orient==="portrait"} T={T}>
+          {orient==="landscape"?"⟺ Landscape":"⟳ Portrait"}
+        </MiniBtn>
+        <MiniBtn onClick={()=>setBw(b=>!b)} active={bw} T={T}>B&W</MiniBtn>
+        <MiniBtn onClick={()=>setNotesArea(n=>!n)} active={notesArea} T={T}>Notes</MiniBtn>
+        <div style={{ width:"1px",height:"20px",background:T.border,margin:"0 2px" }}/>
+        <button onClick={handleSVG} style={{ padding:"5px 12px",borderRadius:"6px",fontSize:"11px",border:"1.5px solid #06B6D4",background:"#082f49",color:"#22d3ee",cursor:"pointer" }}>Save SVG</button>
+        <button onClick={handlePrint} style={{ padding:"5px 12px",borderRadius:"6px",fontSize:"11px",border:"1.5px solid #22C55E",background:"#052e16",color:"#4ade80",cursor:"pointer",fontWeight:"600" }}>🖨 Print</button>
+      </div>
+
+      {/* Preview */}
       <div style={{ flex:1,overflow:"auto",padding:"16px",background:T.bg,display:"flex",justifyContent:"center",alignItems:"flex-start" }}>
-        <div ref={svgRef} style={{ background:"#fff",boxShadow:"0 4px 24px rgba(0,0,0,0.3)",borderRadius:"2px",width:"100%" }}>
+        <div ref={svgRef} style={{ background:"#fff",boxShadow:"0 4px 24px rgba(0,0,0,0.3)",borderRadius:"2px",width:"100%",maxWidth:`${pageW}px` }}>
           <svg xmlns="http://www.w3.org/2000/svg"
             viewBox={`0 0 ${pageW} ${pageH}`}
             style={{ display:"block", width:"100%", height:"auto" }}>
@@ -1635,21 +1643,23 @@ function MultiBoardModal({ boards, logoText, onClose, T }) {
               const row = Math.floor(i / cols);
               const cx = pad + col * cellW;
               const cy = pad + row * cellH;
-              const ip = 12;
-              const titleH = b.title ? 20 : 0;
-              const notesH = notesArea ? 36 : 0;
-              // Available space for fretboard inside cell
-              const fbAvailW = cellW - ip*2 - MARGIN_L - MARGIN_R;
-              const fbAvailH = cellH - ip*2 - titleH - notesH - MARGIN_T - MARGIN_B - 4;
+              const ip = 10; // inner cell padding
+              const ML = 28; // print margin left (string labels)
+              const MT = 16; // print margin top (fret numbers)
+              const MR = 8;
+              const MB = 8;
+              const titleH = b.title ? 18 : 0;
+              const notesH = notesArea ? 32 : 0;
+              const fbAvailW = cellW - ip*2 - ML - MR;
+              const fbAvailH = cellH - ip*2 - titleH - notesH - MT - MB;
               const fretCount = b.fretEnd - b.fretStart + 1;
               const strings = b.tuning.length;
-              // Scale to fit cell — clamp to reasonable min/max
-              const fretW = Math.max(14, Math.min(52, Math.floor(fbAvailW / fretCount)));
-              const strH  = Math.max(10, Math.min(32, Math.floor(fbAvailH / Math.max(strings-1, 1))));
-              const fbW   = MARGIN_L + fretCount * fretW + MARGIN_R;
-              const fbX   = cx + ip + Math.max(0, (cellW - ip*2 - fbW) / 2);
-              const fbY   = cy + ip + titleH;
-              const fbBtm = fbY + MARGIN_T + (strings-1)*strH;
+              const fretW = Math.max(12, Math.floor(fbAvailW / fretCount));
+              const strH  = Math.max(10, Math.floor(fbAvailH / Math.max(strings-1, 1)));
+              const fbX   = cx + ip + ML;
+              const fbY   = cy + ip + titleH + MT;
+              const fbBtm = fbY + (strings-1)*strH;
+              const fbR   = fbX + fretCount*fretW;
               const layerIds = [...new Set(b.dots.map(d=>d.layerId))];
               const bwPats = ["url(#mbw0)","url(#mbw1)","url(#mbw2)","url(#mbw3)","url(#mbw4)"];
 
@@ -1659,31 +1669,24 @@ function MultiBoardModal({ boards, logoText, onClose, T }) {
                   <rect x={cx+1} y={cy+1} width={cellW-2} height={cellH-2}
                     fill="none" stroke="#e0e5ee" strokeWidth={0.5} rx={3}/>
                   {/* Title */}
-                  {b.title&&<text x={cx+ip} y={cy+ip+13} fontSize={11}
+                  {b.title&&<text x={cx+ip} y={cy+ip+12} fontSize={10}
                     fontFamily="Georgia,serif" fontStyle="italic" fill="#222">{b.title}</text>}
                   {/* Nut */}
-                  {b.fretStart===1&&<rect x={fbX+MARGIN_L-2} y={fbY+MARGIN_T}
-                    width={3} height={(strings-1)*strH} fill="#555"/>}
+                  {b.fretStart===1&&<rect x={fbX-2} y={fbY} width={3} height={(strings-1)*strH} fill="#555"/>}
                   {/* Fret lines */}
                   {Array.from({length:fretCount+1},(_,fi)=>(
-                    <line key={fi}
-                      x1={fbX+MARGIN_L+fi*fretW} y1={fbY+MARGIN_T}
-                      x2={fbX+MARGIN_L+fi*fretW} y2={fbBtm}
-                      stroke="#ccc" strokeWidth={0.7}/>
+                    <line key={fi} x1={fbX+fi*fretW} y1={fbY} x2={fbX+fi*fretW} y2={fbBtm} stroke="#ccc" strokeWidth={0.6}/>
                   ))}
                   {/* String lines */}
                   {Array.from({length:strings},(_,si)=>(
-                    <line key={si}
-                      x1={fbX+MARGIN_L} y1={fbY+MARGIN_T+si*strH}
-                      x2={fbX+MARGIN_L+fretCount*fretW} y2={fbY+MARGIN_T+si*strH}
-                      stroke="#bbb" strokeWidth={0.6+si*0.1}/>
+                    <line key={si} x1={fbX} y1={fbY+si*strH} x2={fbR} y2={fbY+si*strH} stroke="#bbb" strokeWidth={0.5+si*0.08}/>
                   ))}
                   {/* Position markers */}
                   {Array.from({length:fretCount},(_,fi)=>{
                     const fret=b.fretStart+fi;
-                    const mcx=fbX+MARGIN_L+fi*fretW+fretW/2;
-                    const mcy=fbY+MARGIN_T+((strings-1)/2)*strH;
-                    const mr=Math.min(3,strH*0.2,fretW*0.2);
+                    const mcx=fbX+fi*fretW+fretW/2;
+                    const mcy=fbY+((strings-1)/2)*strH;
+                    const mr=Math.min(3,strH*0.18,fretW*0.18);
                     if([3,5,7,9].includes(fret))return<circle key={fret} cx={mcx} cy={mcy} r={mr} fill="#ddd"/>;
                     if(fret===12)return<g key={fret}>
                       <circle cx={mcx} cy={mcy-strH} r={mr} fill="#ddd"/>
@@ -1694,26 +1697,24 @@ function MultiBoardModal({ boards, logoText, onClose, T }) {
                   {/* Fret numbers */}
                   {b.showFretNums&&Array.from({length:fretCount},(_,fi)=>{
                     const fret=b.fretStart+fi;
-                    return<text key={fret}
-                      x={fbX+MARGIN_L+fi*fretW+fretW/2} y={fbY+MARGIN_T-4}
-                      textAnchor="middle" fontSize={7}
+                    return<text key={fret} x={fbX+fi*fretW+fretW/2} y={fbY-4}
+                      textAnchor="middle" fontSize={6}
                       fontFamily="'JetBrains Mono',monospace" fill="#aaa">{fret}</text>;
                   })}
                   {/* String labels */}
                   {b.tuning.slice().reverse().map((note,di)=>(
-                    <text key={di}
-                      x={fbX+MARGIN_L-4} y={fbY+MARGIN_T+di*strH+3}
-                      textAnchor="end" fontSize={7}
+                    <text key={di} x={fbX-4} y={fbY+di*strH+3}
+                      textAnchor="end" fontSize={6}
                       fontFamily="'JetBrains Mono',monospace" fill="#aaa">{note}</text>
                   ))}
                   {/* Dots */}
                   {b.dots.filter(d=>d.fret>=b.fretStart&&d.fret<=b.fretEnd).map(d=>{
-                    const dx=fbX+MARGIN_L+(d.fret-b.fretStart)*fretW+fretW/2;
-                    const dy=fbY+MARGIN_T+(strings-1-d.string)*strH;
-                    const r=Math.min(DOT_SIZES[d.size]||11, strH*0.44, fretW*0.44);
+                    const dx=fbX+(d.fret-b.fretStart)*fretW+fretW/2;
+                    const dy=fbY+(strings-1-d.string)*strH;
+                    const r=Math.min(DOT_SIZES[d.size]||11, strH*0.42, fretW*0.42);
                     const li=layerIds.indexOf(d.layerId);
                     const fill=bw?bwPats[li%bwPats.length]:d.color;
-                    const fs=Math.max(5,Math.min(r-2,8));
+                    const fs=Math.max(4,Math.min(r-2,7));
                     return(
                       <g key={`${d.layerId}-${d.string}-${d.fret}`}>
                         {d.shape==="circle"&&<circle cx={dx} cy={dy} r={r} fill={fill}
@@ -1731,7 +1732,7 @@ function MultiBoardModal({ boards, logoText, onClose, T }) {
                   })}
                   {/* Notes lines */}
                   {notesArea&&Array.from({length:4},(_,li)=>{
-                    const ly=fbBtm+MARGIN_B+4+li*((notesH-8)/4);
+                    const ly=fbBtm+MB+4+li*((notesH-8)/4);
                     return<line key={li} x1={cx+ip} y1={ly} x2={cx+cellW-ip} y2={ly}
                       stroke="#eee" strokeWidth={0.7}/>;
                   })}
