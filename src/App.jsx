@@ -1552,12 +1552,11 @@ export default function FretboardPrinter() {
 
 function MultiBoardModal({ boards, logoText, onClose, T }) {
   const [bw,        setBw]        = useState(false);
-  const [cols,      setCols]      = useState(2);
   const [notesArea, setNotesArea] = useState(false);
   const [orient,    setOrient]    = useState("landscape");
   const svgRef = useRef(null);
 
-  // A4 at 96dpi
+  const cols = orient === "landscape" ? 2 : 1;
   const page = orient === "landscape" ? { w:1122, h:794 } : { w:794, h:1122 };
   const pageW = page.w;
   const pageH = page.h;
@@ -1605,11 +1604,6 @@ function MultiBoardModal({ boards, logoText, onClose, T }) {
 
       {/* Toolbar row 2 — controls */}
       <div style={{ display:"flex",alignItems:"center",gap:"6px",padding:"8px 16px 12px",borderBottom:`1px solid ${T.border}`,flexWrap:"wrap" }}>
-        <span style={{ fontSize:"11px",color:T.textLo,fontFamily:"'JetBrains Mono',monospace" }}>Cols:</span>
-        {[1,2,3].map(c=>(
-          <MiniBtn key={c} onClick={()=>setCols(c)} active={cols===c} T={T}>{c}</MiniBtn>
-        ))}
-        <div style={{ width:"1px",height:"20px",background:T.border,margin:"0 2px" }}/>
         <MiniBtn onClick={()=>setOrient(o=>o==="landscape"?"portrait":"landscape")} active={orient==="portrait"} T={T}>
           {orient==="landscape"?"⟺ Landscape":"⟳ Portrait"}
         </MiniBtn>
