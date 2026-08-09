@@ -1054,6 +1054,7 @@ export default function FretboardPrinter() {
     setGuitarType(type);
     const first = Object.keys(TUNING_PRESETS[type])[0];
     setTuningPreset(first);
+    setCustomTuning([...TUNING_PRESETS[type][first]]);
     setUseCustomTuning(false);
   };
 
@@ -1258,7 +1259,11 @@ export default function FretboardPrinter() {
                 </div>
                 <SL T={T}>TUNING PRESET</SL>
                 <select value={useCustomTuning?"__custom__":tuningPreset}
-                  onChange={e=>{ if(e.target.value==="__custom__"){setUseCustomTuning(true);}else{setTuningPreset(e.target.value);setUseCustomTuning(false);} }}
+                  onChange={e=>{ if(e.target.value==="__custom__"){
+                    // Seed custom tuning from the current preset so string count is correct
+                    setCustomTuning([...(TUNING_PRESETS[guitarType][tuningPreset] || DEFAULT_TUNING)]);
+                    setUseCustomTuning(true);
+                  }else{setTuningPreset(e.target.value);setUseCustomTuning(false);} }}
                   style={{ background:T.inputBg, border:`1px solid ${T.border}`, borderRadius:"7px", color:T.textHi, padding:"6px 8px", fontSize:"12px", width:"100%", marginBottom:"10px", cursor:"pointer" }}>
                   {Object.keys(TUNING_PRESETS[guitarType]).map(p=>(
                     <option key={p} value={p}>{p}</option>
@@ -1267,7 +1272,7 @@ export default function FretboardPrinter() {
                 </select>
                 {useCustomTuning && (
                   <div style={{ display:"flex", gap:"5px", flexWrap:"wrap", marginBottom:"10px" }}>
-                    {customTuning.slice(0,tuning.length).map((note,i)=>(
+                    {customTuning.map((note,i)=>(
                       <div key={i} style={{ display:"flex",flexDirection:"column",alignItems:"center",gap:"2px" }}>
                         <span style={{ fontSize:"8px",color:T.textLo,fontFamily:"'JetBrains Mono',monospace" }}>{i+1}</span>
                         <select value={note} onChange={e=>{const n=[...customTuning];n[i]=e.target.value;setCustomTuning(n);}}
@@ -1293,17 +1298,15 @@ export default function FretboardPrinter() {
           {/* ── Tab 1: Fret Range ── */}
           {activeTab===1 && (
             <div style={{ maxWidth:"600px", animation:"fadeIn 0.2s ease" }}>
-              <SL T={T}>QUICK SELECT</SL>
+              <SL T={T}>RANGE</SL>
               <div style={{ display:"flex", flexWrap:"wrap", gap:"6px", marginBottom:"20px" }}>
-                {[[1,12,"Full neck (1–12)"],[1,4,"Frets 1–4"],[1,5,"Frets 1–5"],[3,7,"Frets 3–7"],[4,8,"Frets 4–8"],[5,9,"Frets 5–9"],[7,12,"Frets 7–12"],[2,6,"Frets 2–6"]].map(([s,e,lbl])=>(
-                  <button key={lbl} onClick={()=>{setFretStart(s);setFretEnd(e);}} style={{
-                    padding:"7px 14px", borderRadius:"8px", fontSize:"12px",
-                    border: fretStart===s&&fretEnd===e ? "1.5px solid #F59E0B" : `1.5px solid ${T.border}`,
-                    background: fretStart===s&&fretEnd===e ? "#451a03" : T.surface2,
-                    color: fretStart===s&&fretEnd===e ? "#F59E0B" : T.textMid,
-                    cursor:"pointer", fontWeight:fretStart===s&&fretEnd===e?"700":"400",
-                  }}>{lbl}</button>
-                ))}
+                <button onClick={()=>{setFretStart(1);setFretEnd(12);}} style={{
+                  padding:"7px 14px", borderRadius:"8px", fontSize:"12px",
+                  border: fretStart===1&&fretEnd===12 ? `1.5px solid ${T.textHi}` : `1.5px solid ${T.border}`,
+                  background: fretStart===1&&fretEnd===12 ? T.textHi : T.surface2,
+                  color: fretStart===1&&fretEnd===12 ? T.surface : T.textMid,
+                  cursor:"pointer", fontWeight:fretStart===1&&fretEnd===12?"700":"400",
+                }}>Full neck (1–12)</button>
               </div>
               <SL T={T}>CUSTOM RANGE</SL>
               <div style={{ display:"flex", gap:"16px", alignItems:"flex-end" }}>
