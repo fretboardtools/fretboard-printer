@@ -1228,18 +1228,23 @@ export default function FretboardPrinter() {
 
         {/* Tab bar */}
         <div style={{
-          background:T.surface, borderBottom:`1px solid ${T.border}`,
-          display:"flex", gap:0, padding:"0 8px", flexShrink:0,
+          background:T.bg, borderBottom:`1px solid ${T.border}`,
+          display:"flex", gap:"3px", padding:"8px 8px 0", flexShrink:0,
           overflowX:"auto",
         }}>
           {CTRL_TABS.map((tab, i) => (
             <button key={tab} className="tab-label" onClick={()=>setActiveTab(i)} style={{
-              padding:"10px 14px", background:"none", border:"none",
-              borderBottom: activeTab===i ? `2px solid ${T.textHi}` : "2px solid transparent",
+              padding:"7px 13px 8px",
+              background: activeTab===i ? T.surface : T.bg,
+              border:`1px solid ${T.border}`,
+              borderBottom: activeTab===i ? `1px solid ${T.surface}` : `1px solid ${T.border}`,
+              borderRadius:"6px 6px 0 0",
               color: activeTab===i ? T.textHi : T.textLo,
-              fontSize:"12px", fontWeight: activeTab===i?"700":"400",
+              fontSize:"11.5px", fontWeight: activeTab===i?"700":"400",
               cursor:"pointer", transition:"all 0.1s", whiteSpace:"nowrap", flexShrink:0,
+              marginBottom: activeTab===i ? "-1px" : "0",
               letterSpacing:"0.2px",
+              boxShadow: activeTab===i ? `0 -1px 4px rgba(0,0,0,0.15)` : "none",
             }}>{tab}</button>
           ))}
         </div>
